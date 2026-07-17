@@ -1,0 +1,30 @@
+PIXBen - Seguridad de cuentas, administración y respaldo
+Fecha: 2026-07-15
+
+1. SESIONES SEGURAS POR CUENTA
+- El backend crea un token aleatorio al iniciar sesión y lo asocia al ID único de PostgreSQL.
+- Carrito, favoritos, historial, pedidos y personalizados ya no se consultan por nombre o apellido.
+- Dos personas con el mismo nombre no pueden ver ni modificar la información de la otra.
+- Las sesiones duran 30 días y pueden cerrarse mediante /usuarios/logout.
+
+2. REGISTRO
+- El registro público acepta Gmail, Hotmail, Outlook y Live.
+- El rol del registro público siempre es cliente.
+- Contraseña mínima: 8 caracteres, mayúscula, minúscula, número y símbolo.
+- Los administradores ya existentes pueden seguir iniciando sesión con sus correos administrativos.
+
+3. ADMINISTRACIÓN
+- Eliminar mensajes, pedidos normales y solicitudes personalizadas.
+- Descargar un ZIP de respaldo sin contraseñas, tokens ni secretos.
+- Limpiar analítica antigua o toda la analítica.
+- Crear, editar y eliminar productos/categorías y subir galerías requiere sesión de administrador.
+
+4. RESEÑAS Y PERFIL
+- Alias y foto de perfil en reseñas.
+- Cambio de contraseña y foto de perfil.
+- Reseñas paginadas y botón de me gusta.
+
+IMPORTANTE
+- Después de desplegar esta versión todos deben cerrar sesión e iniciar sesión otra vez.
+- Las sesiones antiguas de localStorage no tienen token y no tendrán acceso a datos privados.
+- Los datos antiguos que no contienen usuarioId no se asignan por nombre, porque hacerlo reabriría el problema de privacidad.

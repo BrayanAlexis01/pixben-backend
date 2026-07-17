@@ -1,0 +1,25 @@
+PIXBEN - CAMBIOS DE BACKEND (julio 2026)
+
+1. Producto:
+   Se agregó el campo tallasDisponibles, almacenado en PostgreSQL como:
+   tallas_disponibles
+
+   Hibernate lo creará automáticamente porque:
+   spring.jpa.hibernate.ddl-auto=update
+
+2. Envío:
+   PixBen ya no añade costo de envío al total del pedido.
+   El total guardado corresponde únicamente a los productos.
+   El envío queda como PENDIENTE_COORDINACION y se paga directamente al transportista.
+
+3. Compatibilidad:
+   El campo costoEnvio se conserva en el modelo MongoDB para no romper pedidos antiguos,
+   pero los pedidos nuevos lo guardan en null.
+
+DESPLIEGUE:
+- Clean and Build
+- Commit y Push
+- Render: Clear build cache & deploy
+
+Los productos antiguos que no tengan tallas configuradas seguirán mostrando las tallas estándar
+hasta que el administrador los edite y guarde sus tallas reales.

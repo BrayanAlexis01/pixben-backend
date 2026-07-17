@@ -1,0 +1,29 @@
+PIXBEN - CAMBIOS BACKEND
+
+1. Clean and Build local
+- Se agregó H2 como base temporal local.
+- application.properties usa Neon cuando existen variables de Render y H2 cuando no existen.
+- PixbenApplicationTests queda deshabilitado porque depende de servicios externos.
+
+2. Pedidos personalizados
+- POST /pedidos-personalizados (multipart: datos, frente opcional, espalda opcional).
+- GET /pedidos-personalizados/usuario/{usuario}
+- GET /pedidos-personalizados/admin/todos
+- GET /pedidos-personalizados/{id}
+- PATCH /pedidos-personalizados/{id}
+- POST /pedidos-personalizados/{id}/aceptar?usuario=...
+- El precio comienza en null y estado PENDIENTE_COTIZACION.
+- Las vistas previas se almacenan en Cloudinary y los datos en MongoDB Atlas.
+
+3. Seguridad de imágenes
+- Solo PNG, JPEG o WEBP.
+- Máximo 8 MB.
+- Se valida el tipo MIME y la firma binaria real.
+- SVG, ejecutables y documentos son rechazados.
+- Las vistas de personalización llegan rasterizadas; el archivo original no se almacena.
+
+4. Contacto y administración
+- POST /contactos
+- GET /contactos/admin/todos
+- PATCH /contactos/{id}/estado
+- Endpoints de pedidos normales para el panel.

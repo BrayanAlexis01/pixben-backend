@@ -1,0 +1,24 @@
+PIXBen backend - cambios de cuentas, perfil, historial, reseñas y analítica
+============================================================================
+
+- Login devuelve un DTO seguro y nunca expone la contraseña.
+- Compatibilidad y migración automática de contraseñas antiguas en texto plano a BCrypt al iniciar sesión correctamente.
+- Endpoints de perfil, cambio de contraseña y foto en Cloudinary.
+- UsuarioId agregado a carrito, favoritos, historial, pedidos y personalizados.
+- Historial sin duplicados, máximo 100 elementos por usuario, borrado individual y limpieza total.
+- Reseñas paginadas, alias/foto de perfil, avatar en frontend y corazones por usuario.
+- Analítica sin IP: hash anónimo, identidad solo para usuarios iniciados, retención de seis meses.
+- H2 y prueba de contexto deshabilitada para permitir Clean and Build local sin credenciales externas.
+- Producción continúa usando las variables de Render para Neon, MongoDB Atlas y Cloudinary.
+
+Variables requeridas en Render:
+SPRING_DATASOURCE_URL
+SPRING_DATASOURCE_USERNAME
+SPRING_DATASOURCE_PASSWORD
+SPRING_DATA_MONGODB_URI
+CLOUDINARY_CLOUD_NAME
+CLOUDINARY_API_KEY
+CLOUDINARY_API_SECRET
+
+Nota de seguridad:
+La sesión del frontend sigue basada en localStorage. Para autenticación real y protección estricta de endpoints administrativos se recomienda una siguiente etapa con JWT y validación de roles en el servidor.

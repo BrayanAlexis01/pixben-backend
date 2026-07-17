@@ -1,0 +1,22 @@
+PIXBen backend corregido
+=========================
+
+1. Las imágenes nuevas se suben a Cloudinary y se guarda su URL HTTPS en PostgreSQL.
+2. El Dockerfile copia la carpeta imagen/ para mantener visibles las imágenes antiguas.
+3. Se conservará la imagen anterior cuando se edite un producto sin seleccionar otra imagen.
+4. PostgreSQL, MongoDB Atlas y Cloudinary se configuran mediante variables de entorno.
+5. Se eliminó el endpoint que mostraba públicamente la URI de MongoDB.
+6. Se agregó /healthz para Render.
+
+Variables requeridas en Render:
+- SPRING_DATASOURCE_URL
+- SPRING_DATASOURCE_USERNAME
+- SPRING_DATASOURCE_PASSWORD
+- SPRING_DATA_MONGODB_URI
+- CLOUDINARY_CLOUD_NAME
+- CLOUDINARY_API_KEY
+- CLOUDINARY_API_SECRET
+
+IMPORTANTE:
+- SPRING_DATA_MONGODB_URI debe incluir /pixben antes de los parámetros.
+- Cambia las contraseñas que se publicaron anteriormente.
