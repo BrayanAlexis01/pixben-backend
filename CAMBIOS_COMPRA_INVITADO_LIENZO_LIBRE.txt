@@ -1,0 +1,11 @@
+CAMBIOS APLICADOS
+
+- Checkout normal sin obligación de crear cuenta.
+- Carrito de invitados almacenado en localStorage y migración automática si luego inicia sesión.
+- Nuevo endpoint POST /pedidos/invitado con validación de precios, stock y tallas en el servidor.
+- El administrador recibe nombre, correo y teléfono del comprador invitado.
+- Personalizador inicia con lienzo libre y permite elegir opcionalmente un producto base.
+- Solicitudes personalizadas sin producto base se guardan como Diseño libre.
+- Bloque de ayuda por WhatsApp editable en personaliza.html.
+
+IMPORTANTE: reemplazar 51XXXXXXXXX en personaliza.html por el número real de WhatsApp.

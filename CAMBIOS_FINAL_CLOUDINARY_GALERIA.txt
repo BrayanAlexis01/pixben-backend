@@ -1,0 +1,20 @@
+PIXBen backend final
+
+- Configuración mediante variables de entorno de Render.
+- PostgreSQL/Neon para productos y usuarios.
+- MongoDB Atlas para carrito, favoritos, historial, pedidos, reseñas y galerías.
+- Cloudinary para imágenes nuevas.
+- POST /imagenes/{productoId}: recibe entre 1 y 7 imágenes multipart en el campo archivos.
+- La primera URL se guarda como portada del producto.
+- Todas las URLs se guardan en la colección imagenes_producto.
+- GET /imagenes/{productoId}: devuelve la galería o 404 si aún no existe.
+- Se mantienen las imágenes antiguas de la carpeta /imagen.
+
+Variables de Render necesarias:
+SPRING_DATASOURCE_URL
+SPRING_DATASOURCE_USERNAME
+SPRING_DATASOURCE_PASSWORD
+SPRING_DATA_MONGODB_URI
+CLOUDINARY_CLOUD_NAME
+CLOUDINARY_API_KEY
+CLOUDINARY_API_SECRET
