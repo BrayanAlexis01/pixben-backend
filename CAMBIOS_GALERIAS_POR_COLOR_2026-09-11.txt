@@ -1,0 +1,35 @@
+PIXBEN - GALERÍAS INDEPENDIENTES POR COLOR
+===========================================
+
+Objetivo
+--------
+Permitir que un único producto tenga varios colores y que cada color tenga su propia galería de imágenes.
+Ejemplo: un solo "Polo Amiri" con Negro, Blanco, Beige, Azul y Rojo; cada color puede tener frente, espalda y fotos de detalle diferentes.
+
+Backend
+-------
+- VarianteColor ahora incorpora `clave`, un UUID estable para asociar la galería sin depender del nombre ni del orden del color.
+- Hibernate agrega de forma no destructiva la columna `clave_color` en `producto_colores` mediante spring.jpa.hibernate.ddl-auto=update.
+- Los productos antiguos siguen funcionando aunque todavía no tengan `clave`.
+- ImagenProducto mantiene la galería general antigua y añade `imagenesPorVariante` en MongoDB.
+- MongoDB no requiere migración: los documentos existentes pueden no tener el nuevo campo.
+- Nuevo endpoint de administrador:
+    POST /imagenes/{productoId}/variantes/{claveColor}
+  Recibe `archivos` multipart y reemplaza la galería de ese color (1 a 7 imágenes).
+- Nuevo endpoint:
+    DELETE /imagenes/{productoId}/variantes/{claveColor}
+  Elimina la asociación de galería de esa variante.
+- Al subir la galería del primer color, su primera imagen se usa como portada general del producto.
+- La galería general POST /imagenes/{productoId} se mantiene para productos sin variantes y compatibilidad.
+
+Compatibilidad
+--------------
+- No se eliminan productos, pedidos, imágenes ni documentos existentes.
+- El campo `imagenIndice` se conserva para productos antiguos; si una variante aún no tiene galería propia, el frontend usa la asociación anterior como fallback.
+- Carrito, favoritos y personalizador reutilizan la nueva galería por color sin cambiar el formato de pedidos.
+
+Despliegue recomendado
+----------------------
+1. Subir primero este backend y esperar a que Render termine correctamente.
+2. Luego subir el frontend incluido en la misma entrega.
+3. Entrar al Admin y editar un producto para comenzar a asignar galerías por color.

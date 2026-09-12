@@ -1,0 +1,7 @@
+PIXBEN - CATÁLOGO INICIAL
+
+- CatalogoInicialConfig agrega 72 productos nuevos al arrancar el backend.
+- No duplica productos: verifica el nombre antes de insertar.
+- 18 Polos / 18 Tazas / 18 Mousepads / 18 Bolsos de tela.
+- Las imágenes apuntan a /imagen/catalogo/... y son servidas por el frontend Netlify.
+- Con los productos que ya existían en la base, el catálogo queda aproximadamente en 80 productos.

@@ -1,0 +1,25 @@
+NOTIFICACIONES PUSH REALES - PIXBEN
+===================================
+
+El backend quedó preparado para enviar una notificación cuando el administrador
+cambia el estado, pago o envío de un pedido, o actualiza una cotización personalizada.
+
+VARIABLES OBLIGATORIAS EN RENDER
+- VAPID_PUBLIC_KEY
+- VAPID_PRIVATE_KEY
+- VAPID_SUBJECT (recomendado: https://pixben.netlify.app)
+
+La clave privada NO debe copiarse dentro de application.properties ni subirse a GitHub.
+Agrégala únicamente como variable secreta en Render.
+
+FLUJO
+1. El cliente entra a Mis pedidos.
+2. Pulsa Activar avisos y acepta el permiso del navegador.
+3. El frontend registra el endpoint Push en /notificaciones/suscribir.
+4. Cuando un administrador actualiza el pedido, el backend manda un Push genérico.
+5. Al tocar la notificación, se abre Mis pedidos para ver el detalle actualizado.
+
+COMPATIBILIDAD
+- Chrome/Android y navegadores Chromium compatibles.
+- Firefox.
+- Safari/iPhone cuando la web está instalada en la pantalla de inicio y el sistema lo permite.

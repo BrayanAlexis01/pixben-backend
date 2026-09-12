@@ -1,0 +1,4 @@
+Se eliminó la semilla automática CatalogoInicialConfig.
+Desde esta versión la base de datos es la única fuente de productos.
+Si el administrador elimina o edita un producto, Render ya no lo recreará en un reinicio.
+Los registros generados que ya existan en PostgreSQL no se eliminan automáticamente para evitar borrar productos que el administrador haya decidido conservar o modificar.

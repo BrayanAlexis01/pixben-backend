@@ -1,0 +1,14 @@
+CAMBIOS REALIZADOS
+
+1. El endpoint POST /imagenes/{productoId} acepta entre 1 y 7 imágenes.
+2. Cada imagen se sube a Cloudinary.
+3. Las URLs se guardan en MongoDB Atlas, colección imagenes_producto.
+4. La primera imagen se guarda también como portada del producto en PostgreSQL.
+5. El límite total de la petición multipart se amplió a 80 MB.
+6. El endpoint GET /imagenes/{productoId} continúa devolviendo la galería.
+
+Variables necesarias en Render:
+- SPRING_DATA_MONGODB_URI
+- CLOUDINARY_CLOUD_NAME
+- CLOUDINARY_API_KEY
+- CLOUDINARY_API_SECRET

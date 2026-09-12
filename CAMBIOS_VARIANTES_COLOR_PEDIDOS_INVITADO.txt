@@ -1,0 +1,34 @@
+PIXBEN - VARIANTES DE COLOR Y PEDIDOS SIN CUENTA
+Fecha: 2026-07-28
+
+CAMBIOS DEL BACKEND
+1. Cada producto puede tener hasta 7 variantes de color.
+   - Nombre del color.
+   - Código hexadecimal para la muestra visual.
+   - Stock independiente.
+   - Índice de imagen asociado según el orden de la galería.
+2. El stock total del producto se calcula sumando el stock de sus colores.
+3. El carrito de usuarios registrados guarda y diferencia producto + talla + color.
+4. Los favoritos guardan la variante elegida (color y talla).
+5. Los pedidos guardan color y talla en cada producto para que el administrador vea exactamente qué variante compró el cliente.
+6. Checkout de invitado validado en servidor.
+7. Cada pedido recibe un código de seguimiento PX-XXXXXXXX.
+8. Nuevo endpoint para consultar un pedido invitado usando código + correo:
+   POST /pedidos/invitado/consultar
+9. El servidor vuelve a validar producto, precio, talla, color y stock antes de registrar el pedido.
+
+BASES DE DATOS
+- PostgreSQL/Neon: Hibernate crea automáticamente la tabla producto_colores porque application.properties usa spring.jpa.hibernate.ddl-auto=update.
+- MongoDB Atlas: los campos color, talla y codigoSeguimiento se agregan en los nuevos documentos sin migración manual.
+- Los productos antiguos que no tienen colores continúan funcionando con su stock general.
+
+ORDEN DE DESPLIEGUE
+1. Publicar primero este backend en Render.
+2. Esperar a que Render finalice correctamente.
+3. Publicar después el frontend actualizado en Netlify.
+4. Entrar al panel administrador y editar los productos que tendrán variantes de color.
+
+USO EN EL PANEL
+- Sube una imagen por cada color y conserva el mismo orden.
+- Color 1 corresponde a Imagen 1, Color 2 a Imagen 2, etc.
+- El stock total queda calculado automáticamente.

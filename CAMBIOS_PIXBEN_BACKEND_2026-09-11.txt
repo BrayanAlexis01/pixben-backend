@@ -1,0 +1,15 @@
+PIXBEN BACKEND - MEJORAS 2026-09-11
+
+1. /api/health y /healthz para diagnóstico y botón temporal de Render.
+2. CORS centralizado y configurable con CORS_ALLOWED_ORIGIN_PATTERNS.
+3. Rate limiting ligero en login, registro, contacto y pedidos públicos.
+4. Cabeceras de seguridad: nosniff, anti-frame, Referrer-Policy y Permissions-Policy.
+5. Errores sin stacktrace/exception en la respuesta HTTP.
+6. Pool Hikari acotado para una instancia pequeña de Render/Neon.
+7. Producto incorpora SKU opcional; se valida y evita duplicar el mismo SKU.
+8. Validaciones de nombre, categoría, precio, stock, descripción, tallas y colores conservando la estructura actual.
+9. No se incluyen scripts destructivos ni borrados de datos; Hibernate añade el campo SKU con ddl-auto=update.
+
+Render (Environment):
+CORS_ALLOWED_ORIGIN_PATTERNS=https://pixben.netlify.app,https://TU-DOMINIO
+DB_POOL_SIZE=5

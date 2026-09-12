@@ -1,0 +1,28 @@
+PIXBEN BACKEND - ENTREGA 2026-09-11
+
+Puedes reemplazar el contenido de tu repositorio pixben-backend por esta versión y hacer push.
+
+IMPORTANTE
+- No hay scripts que borren productos, pedidos, usuarios ni imágenes.
+- La estructura actual de variantes se conserva.
+- Se añadió solamente el campo nullable SKU a productos. Con spring.jpa.hibernate.ddl-auto=update, Hibernate puede añadir esa columna sin borrar los registros actuales.
+- /healthz sigue funcionando y se añadió /api/health.
+
+MEJORAS DE ESTA ENTREGA
+- CORS centralizado y compatible con X-Session-Token.
+- Rate limiting ligero para login, registro, contacto y pedidos.
+- Cabeceras de seguridad HTTP.
+- Validaciones de productos y SKU duplicado.
+- Pool de conexiones Hikari limitado para Render/Neon.
+- Respuestas de error sin stacktrace.
+
+VARIABLES OPCIONALES DE RENDER
+CORS_ALLOWED_ORIGIN_PATTERNS=https://pixben.netlify.app,https://*.netlify.app
+DB_POOL_SIZE=5
+
+Si luego conectas un dominio propio, agrégalo a CORS_ALLOWED_ORIGIN_PATTERNS separado por coma.
+
+ACTUALIZACIÓN 11/09/2026 - GALERÍAS POR COLOR
+- Este backend añade galerías independientes por variante de color.
+- Despliega BACKEND antes que el nuevo frontend.
+- No borres Neon ni MongoDB. La migración es aditiva/compatible.

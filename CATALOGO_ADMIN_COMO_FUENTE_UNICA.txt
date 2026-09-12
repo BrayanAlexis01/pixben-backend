@@ -1,0 +1,1 @@
+Se deshabilitó la carga automática de productos generados. A partir de esta versión, los productos visibles provienen únicamente de la base de datos y pueden editarse/eliminarse desde el panel administrador. Los productos que ya existan en la BD no se borran automáticamente; pueden limpiarse desde el panel mejorado.

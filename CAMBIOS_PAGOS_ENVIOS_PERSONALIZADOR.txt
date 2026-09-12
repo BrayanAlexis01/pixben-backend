@@ -1,0 +1,9 @@
+PIXBEN BACKEND - PAGOS, ENVÍOS Y PERSONALIZADOR
+
+- Producto incluye el campo booleano personalizable.
+- GET /productos/personalizables devuelve solo bases habilitadas o productos cuyo nombre/descripción indique personalizable.
+- Los pedidos guardan productos, subtotal, método/referencia de pago, método/destino de envío y estados separados.
+- PATCH /pedidos/{id}/gestion permite al administrador asignar costo de envío y actualizar estados.
+- DELETE /visitas/admin/anteriores?dias=30 elimina analítica antigua.
+- DELETE /visitas/admin/todas elimina toda la analítica.
+- Hibernate ddl-auto=update creará automáticamente la columna personalizable en PostgreSQL.
