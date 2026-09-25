@@ -5,6 +5,8 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 
 @Entity
 @Table(name = "productos")
@@ -34,6 +36,7 @@ public class Producto {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "producto_colores", joinColumns = @JoinColumn(name = "producto_id"))
     @OrderColumn(name = "orden")
+    @Fetch(FetchMode.SUBSELECT)
     private List<VarianteColor> colores = new ArrayList<>();
 
     private Boolean destacado = false;
