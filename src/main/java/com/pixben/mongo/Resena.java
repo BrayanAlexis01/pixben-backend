@@ -7,10 +7,12 @@ import java.util.Set;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Data
 @Document(collection = "resenas")
+@CompoundIndex(name = "resena_producto_fecha", def = "{\'productoId\': 1, \'fecha\': -1}")
 public class Resena {
     @Id
     private String id;

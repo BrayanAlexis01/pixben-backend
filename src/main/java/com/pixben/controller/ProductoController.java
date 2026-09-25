@@ -18,6 +18,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,11 +55,13 @@ public class ProductoController {
     }
 
     @GetMapping
+    @Cacheable(value = "productos", key = "'todos'")
     public List<Producto> listarProductos() {
         return productoRepository.findAll();
     }
 
     @PostMapping
+    @CacheEvict(value = "productos", allEntries = true)
     public Producto guardarProducto(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @RequestBody Producto producto) {
@@ -68,6 +72,7 @@ public class ProductoController {
     }
 
     @GetMapping("/personalizables")
+    @Cacheable(value = "productos", key = "'personalizables'")
     public List<Producto> listarPersonalizables() {
         return productoRepository.findAll().stream()
                 .filter(this::esPersonalizable)
@@ -75,6 +80,7 @@ public class ProductoController {
     }
 
     @GetMapping("/{id}")
+    @Cacheable(value = "productos", key = "'id|' + #id")
     public Producto obtenerProducto(@PathVariable Long id) {
         return productoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -84,6 +90,7 @@ public class ProductoController {
     }
 
     @PutMapping("/{id}")
+    @CacheEvict(value = "productos", allEntries = true)
     public Producto actualizarProducto(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long id,
@@ -109,6 +116,7 @@ public class ProductoController {
     }
 
     @DeleteMapping("/{id}")
+    @CacheEvict(value = "productos", allEntries = true)
     public void eliminarProducto(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long id) {
@@ -265,6 +273,7 @@ public class ProductoController {
     }
 
     @PostMapping("/{id}/imagen")
+    @CacheEvict(value = "productos", allEntries = true)
     public Producto subirImagen(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long id,

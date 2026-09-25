@@ -178,7 +178,8 @@ public class ResenaController {
     }
 
     private void enriquecer(Resena resena, Long usuarioActualId) {
-        if (resena.getUsuarioId() != null) {
+        boolean faltanDatosVisuales = resena.getAliasUsuario() == null || resena.getAliasUsuario().isBlank();
+        if (faltanDatosVisuales && resena.getUsuarioId() != null) {
             Usuario usuario = usuarioRepository.findById(resena.getUsuarioId()).orElse(null);
             if (usuario != null) {
                 resena.setAliasUsuario(nombreVisible(usuario));

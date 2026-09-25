@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -54,6 +56,7 @@ public class ImagenProductoController {
     }
 
     @GetMapping("/{productoId}")
+    @Cacheable(value = "galerias", key = "#productoId")
     public ResponseEntity<ImagenProducto> obtener(@PathVariable Long productoId) {
         ImagenProducto galeria = imagenProductoRepository.findByProductoId(productoId);
         return galeria == null
@@ -65,6 +68,7 @@ public class ImagenProductoController {
             value = "/{productoId}",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
+    @CacheEvict(value = {"galerias", "productos"}, allEntries = true)
     public ImagenProducto subirGaleria(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long productoId,
@@ -120,6 +124,7 @@ public class ImagenProductoController {
             value = "/{productoId}/variantes/{claveColor}",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
+    @CacheEvict(value = {"galerias", "productos"}, allEntries = true)
     public ImagenProducto subirGaleriaVariante(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long productoId,
@@ -184,6 +189,7 @@ public class ImagenProductoController {
     }
 
     @DeleteMapping("/{productoId}/variantes/{claveColor}")
+    @CacheEvict(value = {"galerias", "productos"}, allEntries = true)
     public ImagenProducto eliminarGaleriaVariante(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long productoId,

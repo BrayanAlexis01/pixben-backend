@@ -29,6 +29,7 @@ public class VisitaController {
 
     private final VisitaRepository repository;
     private final AutenticacionService autenticacionService;
+    private volatile LocalDate ultimaLimpieza;
 
     public VisitaController(VisitaRepository repository, AutenticacionService autenticacionService) {
         this.repository = repository;
@@ -59,7 +60,7 @@ public class VisitaController {
             repository.save(visita);
         }
 
-        repository.deleteByFechaBefore(LocalDateTime.now().minusMonths(6));
+        limpiarAntiguasSiCorresponde(hoy);
         return Map.of("estado", "registrada");
     }
 
@@ -118,6 +119,15 @@ public class VisitaController {
         repository.deleteByFechaBefore(limite);
         long eliminadas = antes - repository.count();
         return Map.of("eliminadas", eliminadas, "dias", diasSeguros, "estado", "analitica_reducida");
+    }
+
+    private void limpiarAntiguasSiCorresponde(LocalDate hoy) {
+        if (hoy.equals(ultimaLimpieza)) return;
+        synchronized (this) {
+            if (hoy.equals(ultimaLimpieza)) return;
+            repository.deleteByFechaBefore(LocalDateTime.now().minusMonths(6));
+            ultimaLimpieza = hoy;
+        }
     }
 
     private String limpiarRuta(String ruta) {
