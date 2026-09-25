@@ -16,7 +16,7 @@ public class ImagenProducto {
     @Id
     private String id;
 
-    @Indexed(unique = true)
+    @Indexed
     private Long productoId;
 
     /** Galería general usada por productos sin variantes y como compatibilidad con el catálogo anterior. */
