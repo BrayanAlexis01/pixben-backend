@@ -9,7 +9,10 @@ public interface FavoritoRepository extends MongoRepository<Favorito, String> {
     List<Favorito> findByUsuario(String usuario);
     List<Favorito> findByUsuarioId(Long usuarioId);
     Optional<Favorito> findFirstByUsuarioIdAndProductoId(Long usuarioId, Long productoId);
+    Optional<Favorito> findFirstByUsuarioIdAndProductoIdAndTallaAndColor(
+            Long usuarioId, Long productoId, String talla, String color);
     Optional<Favorito> findFirstByUsuarioAndProductoId(String usuario, Long productoId);
+    long deleteByUsuarioIdAndProductoId(Long usuarioId, Long productoId);
     void deleteByUsuarioId(Long usuarioId);
     void deleteByUsuario(String usuario);
 }
