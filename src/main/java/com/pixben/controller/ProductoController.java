@@ -121,14 +121,12 @@ public class ProductoController {
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long id) {
         autenticacionService.requerirAdmin(token);
-        if (!productoRepository.existsById(id)) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Producto no encontrado"
-            );
-        }
-
-        productoRepository.deleteById(id);
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Producto no encontrado"
+                ));
+        productoRepository.delete(producto);
     }
 
     private void prepararProducto(Producto producto, Long idActual) {
