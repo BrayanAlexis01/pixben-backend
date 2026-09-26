@@ -55,7 +55,9 @@ public class FavoritoController {
         String color = normalizarColor(producto, favorito.getColor());
         String talla = normalizarTalla(producto, favorito.getTalla());
 
-        Favorito guardado = repository.findFirstByUsuarioIdAndProductoId(usuario.getId(), favorito.getProductoId())
+        Favorito guardado = repository
+                .findFirstByUsuarioIdAndProductoIdAndTallaAndColor(
+                        usuario.getId(), favorito.getProductoId(), talla, color)
                 .orElseGet(Favorito::new);
         guardado.setProductoId(producto.getId());
         guardado.setUsuarioId(usuario.getId());
@@ -77,9 +79,21 @@ public class FavoritoController {
     @GetMapping("/estado")
     public Map<String, Object> estado(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
-            @RequestParam Long productoId) {
+            @RequestParam Long productoId,
+            @RequestParam(required = false) String talla,
+            @RequestParam(required = false) String color) {
         Usuario usuario = autenticacionService.requerirUsuario(token);
-        Optional<Favorito> favorito = repository.findFirstByUsuarioIdAndProductoId(usuario.getId(), productoId);
+        Optional<Favorito> favorito;
+        if ((talla != null && !talla.isBlank()) || (color != null && !color.isBlank())) {
+            Producto producto = productoRepository.findById(productoId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
+            String colorNormalizado = normalizarColor(producto, color);
+            String tallaNormalizada = normalizarTalla(producto, talla);
+            favorito = repository.findFirstByUsuarioIdAndProductoIdAndTallaAndColor(
+                    usuario.getId(), productoId, tallaNormalizada, colorNormalizado);
+        } else {
+            favorito = repository.findFirstByUsuarioIdAndProductoId(usuario.getId(), productoId);
+        }
         return Map.of(
                 "favorito", favorito.isPresent(),
                 "id", favorito.map(Favorito::getId).orElse(""),
@@ -106,7 +120,7 @@ public class FavoritoController {
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long productoId) {
         Usuario usuario = autenticacionService.requerirUsuario(token);
-        repository.findFirstByUsuarioIdAndProductoId(usuario.getId(), productoId).ifPresent(repository::delete);
+        repository.deleteByUsuarioIdAndProductoId(usuario.getId(), productoId);
     }
 
     private String normalizarColor(Producto producto, String recibido) {

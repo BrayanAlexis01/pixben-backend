@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Data
 @Document(collection = "favoritos")
-@CompoundIndex(name = "favorito_usuario_producto", def = "{\'usuarioId\': 1, \'productoId\': 1}")
+@CompoundIndex(name = "favorito_usuario_producto_variante", def = "{\'usuarioId\': 1, \'productoId\': 1, \'talla\': 1, \'color\': 1}")
 public class Favorito {
     @Id
     private String id;
