@@ -237,6 +237,11 @@ public class PedidoPersonalizadoController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estado no válido");
             }
             if (esDisenoAsistido(pedido)
+                    && "VERIFICADO".equalsIgnoreCase(pedido.getEstadoPagoDiseno())
+                    && "PENDIENTE_PAGO_DISENO".equals(estado)) {
+                estado = "EN_REVISION";
+            }
+            if (esDisenoAsistido(pedido)
                     && !Set.of("PENDIENTE_PAGO_DISENO", "CANCELADO").contains(estado)) {
                 exigirPagoDisenoVerificadoSiCorresponde(pedido);
             }
