@@ -7,5 +7,6 @@ import lombok.Data;
 public class ActualizarPedidoPersonalizadoRequest {
     private BigDecimal precio;
     private String estado;
+    private String estadoPagoDiseno;
     private String mensajeAdmin;
 }
