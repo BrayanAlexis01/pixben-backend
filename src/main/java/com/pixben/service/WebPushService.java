@@ -1,7 +1,9 @@
 package com.pixben.service;
 
+import com.pixben.model.Usuario;
 import com.pixben.mongo.PushSubscription;
 import com.pixben.repository.PushSubscriptionRepository;
+import com.pixben.repository.UsuarioRepository;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -44,6 +46,7 @@ public class WebPushService {
     );
 
     private final PushSubscriptionRepository repository;
+    private final UsuarioRepository usuarioRepository;
     private final HttpClient httpClient;
     private final String publicKey;
     private final String privateKey;
@@ -51,10 +54,12 @@ public class WebPushService {
 
     public WebPushService(
             PushSubscriptionRepository repository,
+            UsuarioRepository usuarioRepository,
             @Value("${app.vapid.public-key:}") String publicKey,
             @Value("${app.vapid.private-key:}") String privateKey,
             @Value("${app.vapid.subject:https://pixben.netlify.app}") String subject) {
         this.repository = repository;
+        this.usuarioRepository = usuarioRepository;
         this.publicKey = valor(publicKey);
         this.privateKey = valor(privateKey);
         this.subject = valor(subject).isBlank() ? "https://pixben.netlify.app" : valor(subject);
@@ -75,6 +80,21 @@ public class WebPushService {
     @Async("pushExecutor")
     public void notificarActualizacionPedido(Long usuarioId) {
         if (usuarioId == null || !configurado()) return;
+        notificarUsuario(usuarioId);
+    }
+
+    @Async("pushExecutor")
+    public void notificarNuevoPedidoAdministradores() {
+        if (!configurado()) return;
+        List<Usuario> administradores = usuarioRepository.findByRolIgnoreCase("admin");
+        for (Usuario administrador : administradores) {
+            if (administrador != null && administrador.getId() != null) {
+                notificarUsuario(administrador.getId());
+            }
+        }
+    }
+
+    private void notificarUsuario(Long usuarioId) {
         List<PushSubscription> suscripciones = repository.findByUsuarioId(usuarioId);
         for (PushSubscription suscripcion : suscripciones) {
             enviar(suscripcion);

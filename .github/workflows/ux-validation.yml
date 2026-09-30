@@ -1,8 +1,8 @@
-name: UX and variant validation
+name: Backend validation
 
 on:
-  push:
-    branches: [ "ux-wholesale-dtf-20260925" ]
+  pull_request:
+    branches: [ "master" ]
   workflow_dispatch:
 
 jobs:
@@ -15,7 +15,5 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Compile backend
-        run: mvn -B -DskipTests package
-      - name: Test cart variants
-        run: mvn -B -Dtest=CarritoControllerVariantTest test
+      - name: Compile and test backend
+        run: mvn -B test

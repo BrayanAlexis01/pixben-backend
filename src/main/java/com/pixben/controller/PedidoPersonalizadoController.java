@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -38,8 +39,14 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/pedidos-personalizados")
 public class PedidoPersonalizadoController {
 
+    private static final BigDecimal TARIFA_DISENO_ASISTIDO = new BigDecimal("15.00");
+    private static final Set<String> TIPOS_SERVICIO = Set.of("AUTODISENO", "DISENO_ASISTIDO");
+    private static final Set<String> METODOS_PAGO_DISENO = Set.of("YAPE", "PLIN", "BCP");
+    private static final Set<String> ESTADOS_PAGO_DISENO = Set.of(
+            "NO_APLICA", "POR_VERIFICAR", "VERIFICADO", "RECHAZADO", "REEMBOLSADO"
+    );
     private static final Set<String> ESTADOS_VALIDOS = Set.of(
-            "PENDIENTE_COTIZACION", "EN_REVISION", "COTIZADO", "APROBADO",
+            "PENDIENTE_PAGO_DISENO", "PENDIENTE_COTIZACION", "EN_REVISION", "COTIZADO", "APROBADO",
             "EN_PRODUCCION", "LISTO", "ENVIADO", "CANCELADO"
     );
 
@@ -83,14 +90,27 @@ public class PedidoPersonalizadoController {
         }
 
         validarDatos(datos);
+        String tipoServicio = normalizarTipoServicio(datos.getTipoServicio());
+        boolean asistido = "DISENO_ASISTIDO".equals(tipoServicio);
+
         Producto producto = null;
         if (datos.getProductoId() != null) {
             producto = productoRepository.findById(datos.getProductoId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto base no encontrado"));
         }
 
-        if ((frente == null || frente.isEmpty()) && (espalda == null || espalda.isEmpty())) {
+        boolean sinVistaPrevia = (frente == null || frente.isEmpty()) && (espalda == null || espalda.isEmpty());
+        if (!asistido && sinVistaPrevia) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debes enviar al menos una vista previa");
+        }
+
+        if (asistido) {
+            validarPagoDiseno(datos);
+            String indicaciones = limpiar(datos.getNotas(), 800);
+            if (indicaciones == null || indicaciones.length() < 10) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Describe con un poco más de detalle lo que debe preparar el diseñador");
+            }
         }
 
         String carpeta = "pixben/personalizados/" + UUID.randomUUID();
@@ -104,7 +124,7 @@ public class PedidoPersonalizadoController {
         pedido.setCorreo(usuario.getCorreo());
         pedido.setProductoId(producto == null ? null : producto.getId());
         pedido.setProductoNombre(producto == null
-                ? valorLibre(datos.getProductoNombre(), "Diseño libre")
+                ? valorLibre(datos.getProductoNombre(), asistido ? "Diseño asistido" : "Diseño libre")
                 : producto.getNombre());
         pedido.setCategoria(producto == null
                 ? valorLibre(datos.getCategoria(), "PERSONALIZADO_LIBRE")
@@ -113,14 +133,34 @@ public class PedidoPersonalizadoController {
         pedido.setTalla(limpiar(datos.getTalla(), 20));
         pedido.setCantidad(datos.getCantidad());
         pedido.setNotas(limpiar(datos.getNotas(), 800));
+        pedido.setTipoServicio(tipoServicio);
         pedido.setImagenFrente(urlFrente);
         pedido.setImagenEspalda(urlEspalda);
         pedido.setPrecio(null);
-        pedido.setEstado("PENDIENTE_COTIZACION");
-        pedido.setMensajeAdmin("Recibimos tu diseño. El administrador evaluará la complejidad y asignará el precio.");
+
+        if (asistido) {
+            pedido.setTarifaDiseno(TARIFA_DISENO_ASISTIDO);
+            pedido.setMetodoPagoDiseno(normalizarMetodoPagoDiseno(datos.getMetodoPagoDiseno()));
+            pedido.setReferenciaPagoDiseno(limpiar(datos.getReferenciaPagoDiseno(), 80));
+            pedido.setEstadoPagoDiseno("POR_VERIFICAR");
+            pedido.setRevisionesIncluidas(2);
+            pedido.setEstado("PENDIENTE_PAGO_DISENO");
+            pedido.setMensajeAdmin("Recibimos tu solicitud de diseño asistido. Verificaremos el adelanto de S/ 15.00 antes de que el diseñador empiece.");
+        } else {
+            pedido.setTarifaDiseno(BigDecimal.ZERO);
+            pedido.setMetodoPagoDiseno(null);
+            pedido.setReferenciaPagoDiseno(null);
+            pedido.setEstadoPagoDiseno("NO_APLICA");
+            pedido.setRevisionesIncluidas(0);
+            pedido.setEstado("PENDIENTE_COTIZACION");
+            pedido.setMensajeAdmin("Recibimos tu diseño. El administrador evaluará la complejidad y asignará el precio.");
+        }
+
         pedido.setFechaCreacion(ahora);
         pedido.setFechaActualizacion(ahora);
-        return repository.save(pedido);
+        PedidoPersonalizado guardado = repository.save(pedido);
+        webPushService.notificarNuevoPedidoAdministradores();
+        return guardado;
     }
 
     @GetMapping("/{id}")
@@ -160,27 +200,63 @@ public class PedidoPersonalizadoController {
         String estadoAnterior = pedido.getEstado();
         BigDecimal precioAnterior = pedido.getPrecio();
         String mensajeAnterior = pedido.getMensajeAdmin();
+        String pagoDisenoAnterior = pedido.getEstadoPagoDiseno();
+
+        if (cambios.getEstadoPagoDiseno() != null && !cambios.getEstadoPagoDiseno().isBlank()) {
+            if (!esDisenoAsistido(pedido)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Esta solicitud no utiliza adelanto de diseño");
+            }
+            String estadoPago = cambios.getEstadoPagoDiseno().trim().toUpperCase(Locale.ROOT);
+            if (!ESTADOS_PAGO_DISENO.contains(estadoPago) || "NO_APLICA".equals(estadoPago)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estado de pago de diseño no válido");
+            }
+            pedido.setEstadoPagoDiseno(estadoPago);
+            if ("VERIFICADO".equals(estadoPago) && "PENDIENTE_PAGO_DISENO".equals(pedido.getEstado())
+                    && (cambios.getEstado() == null || cambios.getEstado().isBlank())) {
+                pedido.setEstado("EN_REVISION");
+            }
+            if ("RECHAZADO".equals(estadoPago)
+                    && (cambios.getEstado() == null || cambios.getEstado().isBlank())) {
+                pedido.setEstado("PENDIENTE_PAGO_DISENO");
+            }
+        }
 
         if (cambios.getPrecio() != null) {
             if (cambios.getPrecio().compareTo(BigDecimal.ZERO) < 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El precio no puede ser negativo");
             }
+            exigirPagoDisenoVerificadoSiCorresponde(pedido);
             pedido.setPrecio(cambios.getPrecio());
             if (cambios.getEstado() == null || cambios.getEstado().isBlank()) pedido.setEstado("COTIZADO");
         }
+
         if (cambios.getEstado() != null && !cambios.getEstado().isBlank()) {
-            String estado = cambios.getEstado().trim().toUpperCase();
+            String estado = cambios.getEstado().trim().toUpperCase(Locale.ROOT);
             if (!ESTADOS_VALIDOS.contains(estado)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estado no válido");
             }
+            if (esDisenoAsistido(pedido)
+                    && "VERIFICADO".equalsIgnoreCase(pedido.getEstadoPagoDiseno())
+                    && "PENDIENTE_PAGO_DISENO".equals(estado)) {
+                estado = "EN_REVISION";
+            }
+            if (esDisenoAsistido(pedido)
+                    && !Set.of("PENDIENTE_PAGO_DISENO", "CANCELADO").contains(estado)) {
+                exigirPagoDisenoVerificadoSiCorresponde(pedido);
+            }
             pedido.setEstado(estado);
         }
-        if (cambios.getMensajeAdmin() != null) pedido.setMensajeAdmin(limpiar(cambios.getMensajeAdmin(), 800));
+
+        if (cambios.getMensajeAdmin() != null) {
+            pedido.setMensajeAdmin(limpiar(cambios.getMensajeAdmin(), 800));
+        }
         pedido.setFechaActualizacion(LocalDateTime.now());
         PedidoPersonalizado guardado = repository.save(pedido);
         boolean cambio = !java.util.Objects.equals(estadoAnterior, guardado.getEstado())
                 || !java.util.Objects.equals(precioAnterior, guardado.getPrecio())
-                || !java.util.Objects.equals(mensajeAnterior, guardado.getMensajeAdmin());
+                || !java.util.Objects.equals(mensajeAnterior, guardado.getMensajeAdmin())
+                || !java.util.Objects.equals(pagoDisenoAnterior, guardado.getEstadoPagoDiseno());
         if (cambio) webPushService.notificarActualizacionPedido(guardado.getUsuarioId());
         return guardado;
     }
@@ -197,9 +273,12 @@ public class PedidoPersonalizadoController {
         if (pedido.getPrecio() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La solicitud todavía no tiene precio");
         }
+        exigirPagoDisenoVerificadoSiCorresponde(pedido);
         pedido.setEstado("APROBADO");
         pedido.setFechaActualizacion(LocalDateTime.now());
-        return repository.save(pedido);
+        PedidoPersonalizado guardado = repository.save(pedido);
+        webPushService.notificarNuevoPedidoAdministradores();
+        return guardado;
     }
 
     @DeleteMapping("/{id}")
@@ -221,6 +300,46 @@ public class PedidoPersonalizadoController {
         }
         if (datos.getCantidad() == null || datos.getCantidad() < 1 || datos.getCantidad() > 50) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cantidad debe estar entre 1 y 50");
+        }
+        normalizarTipoServicio(datos.getTipoServicio());
+    }
+
+    private void validarPagoDiseno(PedidoPersonalizadoDatos datos) {
+        normalizarMetodoPagoDiseno(datos.getMetodoPagoDiseno());
+        String referencia = limpiar(datos.getReferenciaPagoDiseno(), 80);
+        if (referencia == null || referencia.length() < 3) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Escribe el número o código de operación del adelanto de diseño");
+        }
+    }
+
+    private String normalizarTipoServicio(String valor) {
+        String tipo = valor == null || valor.isBlank()
+                ? "AUTODISENO"
+                : valor.trim().toUpperCase(Locale.ROOT);
+        if (!TIPOS_SERVICIO.contains(tipo)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo de servicio personalizado no válido");
+        }
+        return tipo;
+    }
+
+    private String normalizarMetodoPagoDiseno(String valor) {
+        String metodo = valor == null ? "" : valor.trim().toUpperCase(Locale.ROOT);
+        if (!METODOS_PAGO_DISENO.contains(metodo)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Selecciona Yape, Plin o BCP para el adelanto de diseño");
+        }
+        return metodo;
+    }
+
+    private boolean esDisenoAsistido(PedidoPersonalizado pedido) {
+        return pedido != null && "DISENO_ASISTIDO".equalsIgnoreCase(pedido.getTipoServicio());
+    }
+
+    private void exigirPagoDisenoVerificadoSiCorresponde(PedidoPersonalizado pedido) {
+        if (esDisenoAsistido(pedido) && !"VERIFICADO".equalsIgnoreCase(pedido.getEstadoPagoDiseno())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Verifica primero el adelanto de S/ 15.00 antes de iniciar o cotizar el trabajo del diseñador");
         }
     }
 

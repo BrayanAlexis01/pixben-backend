@@ -14,4 +14,7 @@ public class PedidoPersonalizadoDatos {
     private String talla;
     private Integer cantidad;
     private String notas;
+    private String tipoServicio;
+    private String metodoPagoDiseno;
+    private String referenciaPagoDiseno;
 }

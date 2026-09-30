@@ -24,6 +24,12 @@ public class PedidoPersonalizado {
     private String talla;
     private Integer cantidad;
     private String notas;
+    private String tipoServicio;
+    private BigDecimal tarifaDiseno;
+    private String metodoPagoDiseno;
+    private String referenciaPagoDiseno;
+    private String estadoPagoDiseno;
+    private Integer revisionesIncluidas;
     private String imagenFrente;
     private String imagenEspalda;
     private BigDecimal precio;

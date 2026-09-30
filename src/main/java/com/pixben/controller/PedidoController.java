@@ -81,7 +81,9 @@ public class PedidoController {
         pedido.setTelefono(limpiar(solicitud.getTelefono(), 30));
         pedido.setItems(construirItemsSeguros(solicitud.getItems(), usuario.getId(), true));
         completarTotales(pedido);
-        return repository.save(pedido);
+        Pedido guardado = repository.save(pedido);
+        webPushService.notificarNuevoPedidoAdministradores();
+        return guardado;
     }
 
     /** Checkout sin cuenta, con precio, talla, color y stock revalidados en servidor. */
@@ -98,7 +100,9 @@ public class PedidoController {
         pedido.setTelefono(limpiar(solicitud.getTelefono(), 30));
         pedido.setItems(construirItemsSeguros(solicitud.getItems(), null, false));
         completarTotales(pedido);
-        return repository.save(pedido);
+        Pedido guardado = repository.save(pedido);
+        webPushService.notificarNuevoPedidoAdministradores();
+        return guardado;
     }
 
     /** Consulta segura para visitantes: se exige código de seguimiento y correo exacto. */
