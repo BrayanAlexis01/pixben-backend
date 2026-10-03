@@ -77,26 +77,29 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private Policy policyFor(HttpServletRequest request) {
         if (!"POST".equalsIgnoreCase(request.getMethod())) return null;
         String path = request.getRequestURI();
-        if (path.equals("/usuarios/login")) return new Policy("login", 10, 10 * 60_000L);
-        if (path.equals("/usuarios")) return new Policy("registro", 8, 60 * 60_000L);
-        if (path.equals("/contactos")) return new Policy("contacto", 15, 60 * 60_000L);
-        if (path.equals("/pedidos/invitado")) return new Policy("pedido-invitado", 20, 60 * 60_000L);
-        if (path.equals("/pedidos/invitado/consultar")) return new Policy("consulta-invitado", 30, 10 * 60_000L);
-        if (path.equals("/pedidos")) return new Policy("pedido", 30, 60 * 60_000L);
-        if (path.equals("/resenas")) return new Policy("resena", 30, 60 * 60_000L);
-        if (path.equals("/pedidos-personalizados")) return new Policy("personalizado", 10, 60 * 60_000L);
+        if (path.equals("/usuarios/login")) return new Policy("login", 8, 10 * 60_000L);
+        if (path.equals("/usuarios")) return new Policy("registro", 5, 60 * 60_000L);
+        if (path.equals("/contactos")) return new Policy("contacto", 8, 60 * 60_000L);
+        if (path.equals("/pedidos/invitado")) return new Policy("pedido-invitado", 8, 60 * 60_000L);
+        if (path.equals("/pedidos/invitado/consultar")) return new Policy("consulta-invitado", 12, 10 * 60_000L);
+        if (path.equals("/pedidos")) return new Policy("pedido", 12, 60 * 60_000L);
+        if (path.equals("/resenas")) return new Policy("resena", 15, 60 * 60_000L);
+        if (path.equals("/pedidos-personalizados")) return new Policy("personalizado", 6, 60 * 60_000L);\n        if (path.equals("/reclamos")) return new Policy("reclamo", 3, 60 * 60_000L);
         return null;
     }
 
-    private String clientIp(HttpServletRequest request) {
-        String cf = request.getHeader("CF-Connecting-IP");
-        if (cf != null && !cf.isBlank()) return cf.trim();
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            String first = forwarded.split(",", 2)[0].trim();
-            if (!first.isBlank()) return first;
-        }
-        return request.getRemoteAddr() == null ? "unknown" : request.getRemoteAddr();
+    String clientIp(HttpServletRequest request) {
+        String cf = cleanIp(request.getHeader("CF-Connecting-IP"));
+        if (cf != null) return cf;
+        String remote = cleanIp(request.getRemoteAddr());
+        return remote == null ? "unknown" : remote;
+    }
+
+    private String cleanIp(String value) {
+        if (value == null) return null;
+        String clean = value.trim();
+        if (clean.isBlank() || clean.length() > 64) return null;
+        return clean.matches("[0-9a-fA-F:.]+") ? clean : null;
     }
 
     private void cleanupOccasionally() {
