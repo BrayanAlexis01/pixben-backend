@@ -17,7 +17,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final List<String> allowedOriginPatterns;
 
-    public WebConfig(@Value("${app.cors.allowed-origin-patterns:https://pixben.netlify.app,https://*.netlify.app,http://localhost:*,http://127.0.0.1:*}") String origins) {
+    public WebConfig(@Value("${app.cors.allowed-origin-patterns:https://pixben.netlify.app}") String origins) {
         this.allowedOriginPatterns = Arrays.stream(origins.split(","))
                 .map(String::trim)
                 .filter(valor -> !valor.isBlank())
@@ -41,7 +41,7 @@ public class WebConfig implements WebMvcConfigurer {
         CorsConfiguration configuracion = new CorsConfiguration();
         configuracion.setAllowedOriginPatterns(allowedOriginPatterns);
         configuracion.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuracion.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Session-Token", "Accept", "Origin", "X-Requested-With"));
+        configuracion.setAllowedHeaders(List.of("Content-Type", "X-Session-Token", "Accept", "Origin"));
         configuracion.setExposedHeaders(List.of("Location", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"));
         configuracion.setAllowCredentials(false);
         configuracion.setMaxAge(3600L);
