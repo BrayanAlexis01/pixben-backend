@@ -144,7 +144,8 @@ public class UsuarioController {
         }
         usuario.setPassword(passwordEncoder.encode(datos.getPasswordNueva()));
         usuarioRepository.save(usuario);
-        return Map.of("mensaje", "Contraseña actualizada correctamente");
+        autenticacionService.revocarSesiones(usuario.getId());
+        return Map.of("mensaje", "Contraseña actualizada. Inicia sesión nuevamente");
     }
 
     @PostMapping(value = "/me/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
