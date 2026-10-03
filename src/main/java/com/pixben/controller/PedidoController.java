@@ -153,7 +153,12 @@ public class PedidoController {
         autenticacionService.requerirAdmin(token);
         Pedido pedido = obtener(id);
         String estadoAnterior = pedido.getEstado();
-        pedido.setEstado(normalizarEstado(estado, "PENDIENTE"));
+        pedido.setEstado(normalizarEstadoPermitido(estado, "PENDIENTE", ESTADOS_PEDIDO, "estado del pedido"));
+        boolean yaDespachado = Set.of("ENVIADO", "ENTREGADO").contains(valor(estadoAnterior).toUpperCase(Locale.ROOT))
+                || Set.of("ENTREGADO_TRANSPORTISTA", "EN_CAMINO", "ENTREGADO").contains(valor(pedido.getEstadoEnvio()).toUpperCase(Locale.ROOT));
+        if ("CANCELADO".equals(pedido.getEstado()) && Boolean.TRUE.equals(pedido.getStockAplicado()) && !yaDespachado) {
+            liberarStock(pedido);
+        }
         Pedido guardado = repository.save(pedido);
         if (!java.util.Objects.equals(estadoAnterior, guardado.getEstado())) {
             webPushService.notificarActualizacionPedido(guardado.getUsuarioId());
