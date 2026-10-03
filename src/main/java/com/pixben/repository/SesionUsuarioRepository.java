@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SesionUsuarioRepository extends JpaRepository<SesionUsuario, String> {
     void deleteByExpiraEnBefore(LocalDateTime limite);
+    void deleteByUsuarioId(Long usuarioId);
 }
