@@ -34,6 +34,12 @@ public class Pedido {
     private String referenciaPago;
     private String estadoPago;
 
+    /**
+     * false/null: el inventario todavía no fue descontado.
+     * true: el pago fue verificado y el inventario ya fue aplicado.
+     */
+    private Boolean stockAplicado = false;
+
     private String metodoEnvio;
     private String destinoEnvio;
     private String referenciaEnvio;

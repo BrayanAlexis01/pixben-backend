@@ -16,8 +16,10 @@ import com.pixben.service.WebPushService;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
@@ -40,6 +42,9 @@ public class PedidoController {
     private static final Pattern CORREO_VALIDO = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
     private static final Set<String> METODOS_PAGO = Set.of("YAPE", "PLIN", "BCP");
     private static final Set<String> METODOS_ENVIO = Set.of("SHALOM", "INDRIVE");
+    private static final Set<String> ESTADOS_PAGO = Set.of("POR_VERIFICAR", "VERIFICADO", "RECHAZADO", "REEMBOLSADO");
+    private static final Set<String> ESTADOS_PEDIDO = Set.of("PENDIENTE", "PAGADO", "EN_PREPARACION", "LISTO_PARA_DESPACHO", "ENVIADO", "ENTREGADO", "CANCELADO");
+    private static final Set<String> ESTADOS_ENVIO = Set.of("PENDIENTE_COORDINACION", "LISTO_PARA_DESPACHO", "ENTREGADO_TRANSPORTISTA", "EN_CAMINO", "ENTREGADO");
     private static final String CARACTERES_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final SecureRandom ALEATORIO = new SecureRandom();
 
@@ -150,7 +155,12 @@ public class PedidoController {
         autenticacionService.requerirAdmin(token);
         Pedido pedido = obtener(id);
         String estadoAnterior = pedido.getEstado();
-        pedido.setEstado(normalizarEstado(estado, "PENDIENTE"));
+        pedido.setEstado(normalizarEstadoPermitido(estado, "PENDIENTE", ESTADOS_PEDIDO, "estado del pedido"));
+        boolean yaDespachado = Set.of("ENVIADO", "ENTREGADO").contains(valor(estadoAnterior).toUpperCase(Locale.ROOT))
+                || Set.of("ENTREGADO_TRANSPORTISTA", "EN_CAMINO", "ENTREGADO").contains(valor(pedido.getEstadoEnvio()).toUpperCase(Locale.ROOT));
+        if ("CANCELADO".equals(pedido.getEstado()) && Boolean.TRUE.equals(pedido.getStockAplicado()) && !yaDespachado) {
+            liberarStock(pedido);
+        }
         Pedido guardado = repository.save(pedido);
         if (!java.util.Objects.equals(estadoAnterior, guardado.getEstado())) {
             webPushService.notificarActualizacionPedido(guardado.getUsuarioId());
@@ -168,9 +178,24 @@ public class PedidoController {
         String estadoAnterior = pedido.getEstado();
         String pagoAnterior = pedido.getEstadoPago();
         String envioAnterior = pedido.getEstadoEnvio();
-        if (datos.getEstado() != null) pedido.setEstado(normalizarEstado(datos.getEstado(), pedido.getEstado()));
-        if (datos.getEstadoPago() != null) pedido.setEstadoPago(normalizarEstado(datos.getEstadoPago(), pedido.getEstadoPago()));
-        if (datos.getEstadoEnvio() != null) pedido.setEstadoEnvio(normalizarEstado(datos.getEstadoEnvio(), pedido.getEstadoEnvio()));
+        if (datos.getEstado() != null) pedido.setEstado(normalizarEstadoPermitido(datos.getEstado(), pedido.getEstado(), ESTADOS_PEDIDO, "estado del pedido"));
+        if (datos.getEstadoPago() != null) pedido.setEstadoPago(normalizarEstadoPermitido(datos.getEstadoPago(), pedido.getEstadoPago(), ESTADOS_PAGO, "estado de pago"));
+        if (datos.getEstadoEnvio() != null) pedido.setEstadoEnvio(normalizarEstadoPermitido(datos.getEstadoEnvio(), pedido.getEstadoEnvio(), ESTADOS_ENVIO, "estado de envío"));
+
+        boolean estabaAplicado = Boolean.TRUE.equals(pedido.getStockAplicado());
+        boolean pagoVerificado = "VERIFICADO".equals(pedido.getEstadoPago());
+        boolean yaDespachado = Set.of("ENVIADO", "ENTREGADO").contains(valor(pedido.getEstado()).toUpperCase(Locale.ROOT))
+                || Set.of("ENTREGADO_TRANSPORTISTA", "EN_CAMINO", "ENTREGADO").contains(valor(pedido.getEstadoEnvio()).toUpperCase(Locale.ROOT));
+
+        if (pagoVerificado && !estabaAplicado) {
+            aplicarStock(pedido);
+        } else if (!pagoVerificado && estabaAplicado && !yaDespachado) {
+            liberarStock(pedido);
+        }
+
+        if ("CANCELADO".equals(pedido.getEstado()) && Boolean.TRUE.equals(pedido.getStockAplicado()) && !yaDespachado) {
+            liberarStock(pedido);
+        }
         double subtotal = pedido.getSubtotal() == null ? (pedido.getTotal() == null ? 0.0 : pedido.getTotal()) : pedido.getSubtotal();
         pedido.setCostoEnvio(null);
         pedido.setSubtotal(subtotal);
@@ -189,6 +214,12 @@ public class PedidoController {
             @PathVariable String id) {
         autenticacionService.requerirAdmin(token);
         Pedido pedido = obtener(id);
+        boolean yaDespachado = Set.of("ENVIADO", "ENTREGADO").contains(valor(pedido.getEstado()).toUpperCase(Locale.ROOT))
+                || Set.of("ENTREGADO_TRANSPORTISTA", "EN_CAMINO", "ENTREGADO").contains(valor(pedido.getEstadoEnvio()).toUpperCase(Locale.ROOT));
+        if (yaDespachado) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "No elimines un pedido que ya fue enviado o entregado");
+        }
+        if (Boolean.TRUE.equals(pedido.getStockAplicado())) liberarStock(pedido);
         repository.delete(pedido);
     }
 
@@ -199,6 +230,7 @@ public class PedidoController {
         pedido.setMetodoPago(normalizarOpcion(solicitud.getMetodoPago(), METODOS_PAGO, "método de pago"));
         pedido.setReferenciaPago(limpiar(solicitud.getReferenciaPago(), 80));
         pedido.setEstadoPago("POR_VERIFICAR");
+        pedido.setStockAplicado(false);
         pedido.setMetodoEnvio(normalizarOpcion(solicitud.getMetodoEnvio(), METODOS_ENVIO, "método de envío"));
         pedido.setDestinoEnvio(limpiar(solicitud.getDestinoEnvio(), 220));
         pedido.setReferenciaEnvio(limpiar(solicitud.getReferenciaEnvio(), 220));
@@ -263,7 +295,7 @@ public class PedidoController {
         if (personalizado.getPrecio() == null || !Set.of("APROBADO", "EN_PRODUCCION", "LISTO", "ENVIADO").contains(valor(personalizado.getEstado()).toUpperCase(Locale.ROOT))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cotización personalizada todavía no está aceptada");
         }
-        int cantidad = normalizarCantidad(personalizado.getCantidad());
+        int cantidad = normalizarCantidadPersonalizada(personalizado.getCantidad());
         double subtotal = personalizado.getPrecio().doubleValue();
 
         PedidoItem seguro = new PedidoItem();
@@ -307,6 +339,9 @@ public class PedidoController {
         }
         if (pedido.getItems() == null || pedido.getItems().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El carrito está vacío");
+        }
+        if (pedido.getItems().size() > 25) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El pedido no puede superar 25 líneas de productos");
         }
         normalizarOpcion(pedido.getMetodoPago(), METODOS_PAGO, "método de pago");
         normalizarOpcion(pedido.getMetodoEnvio(), METODOS_ENVIO, "método de envío");
@@ -368,6 +403,78 @@ public class PedidoController {
         }
     }
 
+    private void aplicarStock(Pedido pedido) {
+        Map<Long, Producto> modificados = new LinkedHashMap<>();
+        for (PedidoItem item : pedido.getItems()) {
+            if (item == null || Boolean.TRUE.equals(item.getPersonalizado()) || item.getProductoId() == null) continue;
+            Producto producto = modificados.computeIfAbsent(item.getProductoId(), id ->
+                    productoRepository.findById(id)
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                                    "El producto " + valor(item.getNombre(), "seleccionado") + " ya no existe")));
+            int cantidad = normalizarCantidad(item.getCantidad());
+            String color = valor(item.getColor(), "SIN_COLOR");
+
+            if (producto.getColores() != null && !producto.getColores().isEmpty()) {
+                VarianteColor variante = producto.getColores().stream()
+                        .filter(v -> v != null && v.getNombre() != null && v.getNombre().equalsIgnoreCase(color))
+                        .findFirst()
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                                "El color " + color + " ya no está disponible para " + producto.getNombre()));
+                int disponible = variante.getStock() == null ? 0 : variante.getStock();
+                if (disponible < cantidad) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "Stock insuficiente para confirmar " + producto.getNombre() + " en color " + color);
+                }
+                variante.setStock(disponible - cantidad);
+                recalcularStockTotal(producto);
+            } else {
+                int disponible = producto.getStock() == null ? 0 : producto.getStock();
+                if (disponible < cantidad) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "Stock insuficiente para confirmar " + producto.getNombre());
+                }
+                producto.setStock(disponible - cantidad);
+            }
+        }
+        productoRepository.saveAll(modificados.values());
+        pedido.setStockAplicado(true);
+    }
+
+    private void liberarStock(Pedido pedido) {
+        if (!Boolean.TRUE.equals(pedido.getStockAplicado())) return;
+        Map<Long, Producto> modificados = new LinkedHashMap<>();
+        for (PedidoItem item : pedido.getItems()) {
+            if (item == null || Boolean.TRUE.equals(item.getPersonalizado()) || item.getProductoId() == null) continue;
+            Producto producto = modificados.computeIfAbsent(item.getProductoId(),
+                    id -> productoRepository.findById(id).orElse(null));
+            if (producto == null) continue;
+            int cantidad = Math.max(1, Math.min(20, item.getCantidad() == null ? 1 : item.getCantidad()));
+            String color = valor(item.getColor(), "SIN_COLOR");
+
+            if (producto.getColores() != null && !producto.getColores().isEmpty()) {
+                producto.getColores().stream()
+                        .filter(v -> v != null && v.getNombre() != null && v.getNombre().equalsIgnoreCase(color))
+                        .findFirst()
+                        .ifPresent(v -> v.setStock((v.getStock() == null ? 0 : v.getStock()) + cantidad));
+                recalcularStockTotal(producto);
+            } else {
+                producto.setStock((producto.getStock() == null ? 0 : producto.getStock()) + cantidad);
+            }
+        }
+        productoRepository.saveAll(modificados.values().stream().filter(java.util.Objects::nonNull).toList());
+        pedido.setStockAplicado(false);
+    }
+
+    private void recalcularStockTotal(Producto producto) {
+        if (producto.getColores() == null || producto.getColores().isEmpty()) return;
+        producto.setStock(producto.getColores().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(VarianteColor::getStock)
+                .filter(java.util.Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .sum());
+    }
+
     private boolean usaTallas(Producto producto) {
         String texto = ((producto.getCategoria() == null ? "" : producto.getCategoria()) + " "
                 + (producto.getNombre() == null ? "" : producto.getNombre())).toLowerCase(Locale.ROOT);
@@ -378,8 +485,16 @@ public class PedidoController {
 
     private int normalizarCantidad(Integer cantidad) {
         int valor = cantidad == null ? 1 : cantidad;
+        if (valor < 1 || valor > 20) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cantidad debe estar entre 1 y 20");
+        }
+        return valor;
+    }
+
+    private int normalizarCantidadPersonalizada(Integer cantidad) {
+        int valor = cantidad == null ? 1 : cantidad;
         if (valor < 1 || valor > 50) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cantidad debe estar entre 1 y 50");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cantidad personalizada debe estar entre 1 y 50");
         }
         return valor;
     }
@@ -418,6 +533,14 @@ public class PedidoController {
     private String normalizarEstado(String estado, String respaldo) {
         if (estado == null || estado.isBlank()) return respaldo == null ? "PENDIENTE" : respaldo;
         return estado.trim().toUpperCase().replace(' ', '_');
+    }
+
+    private String normalizarEstadoPermitido(String estado, String respaldo, Set<String> permitidos, String campo) {
+        String normalizado = normalizarEstado(estado, respaldo);
+        if (!permitidos.contains(normalizado)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecciona un " + campo + " válido");
+        }
+        return normalizado;
     }
 
     private String nombreVisible(Usuario usuario) {
