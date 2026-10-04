@@ -16,8 +16,10 @@ import com.pixben.service.WebPushService;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
@@ -402,11 +404,13 @@ public class PedidoController {
     }
 
     private void aplicarStock(Pedido pedido) {
+        Map<Long, Producto> modificados = new LinkedHashMap<>();
         for (PedidoItem item : pedido.getItems()) {
             if (item == null || Boolean.TRUE.equals(item.getPersonalizado()) || item.getProductoId() == null) continue;
-            Producto producto = productoRepository.findById(item.getProductoId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
-                            "El producto " + valor(item.getNombre(), "seleccionado") + " ya no existe"));
+            Producto producto = modificados.computeIfAbsent(item.getProductoId(), id ->
+                    productoRepository.findById(id)
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                                    "El producto " + valor(item.getNombre(), "seleccionado") + " ya no existe")));
             int cantidad = normalizarCantidad(item.getCantidad());
             String color = valor(item.getColor(), "SIN_COLOR");
 
@@ -431,16 +435,18 @@ public class PedidoController {
                 }
                 producto.setStock(disponible - cantidad);
             }
-            productoRepository.save(producto);
         }
+        productoRepository.saveAll(modificados.values());
         pedido.setStockAplicado(true);
     }
 
     private void liberarStock(Pedido pedido) {
         if (!Boolean.TRUE.equals(pedido.getStockAplicado())) return;
+        Map<Long, Producto> modificados = new LinkedHashMap<>();
         for (PedidoItem item : pedido.getItems()) {
             if (item == null || Boolean.TRUE.equals(item.getPersonalizado()) || item.getProductoId() == null) continue;
-            Producto producto = productoRepository.findById(item.getProductoId()).orElse(null);
+            Producto producto = modificados.computeIfAbsent(item.getProductoId(),
+                    id -> productoRepository.findById(id).orElse(null));
             if (producto == null) continue;
             int cantidad = Math.max(1, Math.min(20, item.getCantidad() == null ? 1 : item.getCantidad()));
             String color = valor(item.getColor(), "SIN_COLOR");
@@ -454,8 +460,8 @@ public class PedidoController {
             } else {
                 producto.setStock((producto.getStock() == null ? 0 : producto.getStock()) + cantidad);
             }
-            productoRepository.save(producto);
         }
+        productoRepository.saveAll(modificados.values().stream().filter(java.util.Objects::nonNull).toList());
         pedido.setStockAplicado(false);
     }
 
