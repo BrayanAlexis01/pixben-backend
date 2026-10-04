@@ -293,7 +293,7 @@ public class PedidoController {
         if (personalizado.getPrecio() == null || !Set.of("APROBADO", "EN_PRODUCCION", "LISTO", "ENVIADO").contains(valor(personalizado.getEstado()).toUpperCase(Locale.ROOT))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cotización personalizada todavía no está aceptada");
         }
-        int cantidad = normalizarCantidad(personalizado.getCantidad());
+        int cantidad = normalizarCantidadPersonalizada(personalizado.getCantidad());
         double subtotal = personalizado.getPrecio().doubleValue();
 
         PedidoItem seguro = new PedidoItem();
@@ -481,6 +481,14 @@ public class PedidoController {
         int valor = cantidad == null ? 1 : cantidad;
         if (valor < 1 || valor > 20) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cantidad debe estar entre 1 y 20");
+        }
+        return valor;
+    }
+
+    private int normalizarCantidadPersonalizada(Integer cantidad) {
+        int valor = cantidad == null ? 1 : cantidad;
+        if (valor < 1 || valor > 50) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cantidad personalizada debe estar entre 1 y 50");
         }
         return valor;
     }
