@@ -84,7 +84,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (path.equals("/pedidos/invitado/consultar")) return new Policy("consulta-invitado", 12, 10 * 60_000L);
         if (path.equals("/pedidos")) return new Policy("pedido", 12, 60 * 60_000L);
         if (path.equals("/resenas")) return new Policy("resena", 15, 60 * 60_000L);
-        if (path.equals("/pedidos-personalizados")) return new Policy("personalizado", 6, 60 * 60_000L);\n        if (path.equals("/reclamos")) return new Policy("reclamo", 3, 60 * 60_000L);
+        if (path.equals("/pedidos-personalizados")) return new Policy("personalizado", 6, 60 * 60_000L);
+        if (path.equals("/reclamos")) return new Policy("reclamo", 3, 60 * 60_000L);
         return null;
     }
 
