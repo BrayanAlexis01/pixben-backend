@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -58,7 +59,7 @@ public class ImagenProductoController {
     @GetMapping("/{productoId}")
     @Cacheable(value = "galerias", key = "#productoId")
     public ResponseEntity<ImagenProducto> obtener(@PathVariable Long productoId) {
-        ImagenProducto galeria = imagenProductoRepository.findByProductoId(productoId);
+        ImagenProducto galeria = obtenerGaleriaUnica(productoId);
         return galeria == null
                 ? ResponseEntity.notFound().build()
                 : ResponseEntity.ok(galeria);
@@ -104,7 +105,7 @@ public class ImagenProductoController {
 
         List<String> urls = subirImagenesCloudinary(imagenesValidas, "pixben/productos/" + productoId);
 
-        ImagenProducto galeria = imagenProductoRepository.findByProductoId(productoId);
+        ImagenProducto galeria = obtenerGaleriaUnica(productoId);
         if (galeria == null) {
             galeria = new ImagenProducto();
             galeria.setProductoId(productoId);
@@ -165,7 +166,7 @@ public class ImagenProductoController {
         List<String> urls = subirImagenesCloudinary(imagenesValidas,
                 "pixben/productos/" + productoId + "/variantes/" + claveColor);
 
-        ImagenProducto galeria = imagenProductoRepository.findByProductoId(productoId);
+        ImagenProducto galeria = obtenerGaleriaUnica(productoId);
         if (galeria == null) {
             galeria = new ImagenProducto();
             galeria.setProductoId(productoId);
@@ -202,7 +203,7 @@ public class ImagenProductoController {
         if (!existe) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La variante de color no pertenece a este producto");
         }
-        ImagenProducto galeria = imagenProductoRepository.findByProductoId(productoId);
+        ImagenProducto galeria = obtenerGaleriaUnica(productoId);
         if (galeria == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Este producto no tiene galería registrada");
         }
@@ -212,6 +213,69 @@ public class ImagenProductoController {
         porVariante.remove(claveColor.toLowerCase());
         galeria.setImagenesPorVariante(porVariante);
         return imagenProductoRepository.save(galeria);
+    }
+
+    /**
+     * Normaliza galerías antiguas duplicadas del mismo producto.
+     *
+     * Antes el frontend podía subir varias variantes en paralelo; si todavía no
+     * existía un documento de galería, dos solicitudes podían crear documentos
+     * separados con el mismo productoId. Aquí se conservan las imágenes de todos
+     * los documentos, se unifican por variante y se eliminan los duplicados.
+     */
+    private ImagenProducto obtenerGaleriaUnica(Long productoId) {
+        List<ImagenProducto> galerias = imagenProductoRepository.findAllByProductoId(productoId);
+        if (galerias == null || galerias.isEmpty()) {
+            return null;
+        }
+        if (galerias.size() == 1) {
+            return galerias.get(0);
+        }
+
+        ImagenProducto principal = galerias.get(0);
+        LinkedHashSet<String> imagenesGenerales = new LinkedHashSet<>();
+        Map<String, LinkedHashSet<String>> variantesAcumuladas = new LinkedHashMap<>();
+
+        for (ImagenProducto galeria : galerias) {
+            if (galeria == null) continue;
+
+            if (galeria.getImagenes() != null) {
+                galeria.getImagenes().stream()
+                        .filter(url -> url != null && !url.isBlank())
+                        .forEach(imagenesGenerales::add);
+            }
+
+            if (galeria.getImagenesPorVariante() != null) {
+                galeria.getImagenesPorVariante().forEach((clave, urls) -> {
+                    if (clave == null || clave.isBlank() || urls == null) return;
+                    LinkedHashSet<String> acumuladas = variantesAcumuladas.computeIfAbsent(
+                            clave.toLowerCase(),
+                            ignorada -> new LinkedHashSet<>()
+                    );
+                    urls.stream()
+                            .filter(url -> url != null && !url.isBlank())
+                            .forEach(acumuladas::add);
+                });
+            }
+        }
+
+        principal.setProductoId(productoId);
+        principal.setImagenes(imagenesGenerales.stream()
+                .limit(MAXIMO_IMAGENES)
+                .toList());
+
+        Map<String, List<String>> variantesUnificadas = new LinkedHashMap<>();
+        variantesAcumuladas.forEach((clave, urls) ->
+                variantesUnificadas.put(
+                        clave,
+                        urls.stream().limit(MAXIMO_IMAGENES).toList()
+                )
+        );
+        principal.setImagenesPorVariante(variantesUnificadas);
+
+        ImagenProducto guardada = imagenProductoRepository.save(principal);
+        imagenProductoRepository.deleteAll(galerias.subList(1, galerias.size()));
+        return guardada;
     }
 
     private List<String> subirImagenesCloudinary(List<MultipartFile> archivos, String carpeta) throws IOException {
