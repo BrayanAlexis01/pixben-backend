@@ -21,6 +21,7 @@ import java.util.UUID;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -117,6 +118,7 @@ public class ProductoController {
 
     @DeleteMapping("/{id}")
     @CacheEvict(value = "productos", allEntries = true)
+    @Transactional
     public void eliminarProducto(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long id) {
@@ -127,6 +129,50 @@ public class ProductoController {
                         "Producto no encontrado"
                 ));
         productoRepository.delete(producto);
+        productoRepository.flush();
+    }
+
+    @PostMapping("/eliminar-lote")
+    @CacheEvict(value = "productos", allEntries = true)
+    @Transactional
+    public Map<String, Object> eliminarProductosLote(
+            @RequestHeader(AutenticacionService.HEADER_SESION) String token,
+            @RequestBody List<Long> ids) {
+
+        autenticacionService.requerirAdmin(token);
+
+        if (ids == null || ids.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecciona al menos un producto");
+        }
+
+        LinkedHashSet<Long> solicitados = new LinkedHashSet<>();
+        for (Long id : ids) {
+            if (id != null && id > 0) solicitados.add(id);
+        }
+
+        if (solicitados.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se recibieron IDs válidos");
+        }
+        if (solicitados.size() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo puedes eliminar hasta 100 productos por operación");
+        }
+
+        List<Producto> encontrados = productoRepository.findAllById(solicitados);
+        Set<Long> encontradosIds = encontrados.stream()
+                .map(Producto::getId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+
+        productoRepository.deleteAll(encontrados);
+        productoRepository.flush();
+
+        List<Long> noEncontrados = solicitados.stream()
+                .filter(id -> !encontradosIds.contains(id))
+                .toList();
+
+        return Map.of(
+                "eliminados", List.copyOf(encontradosIds),
+                "noEncontrados", noEncontrados
+        );
     }
 
     private void prepararProducto(Producto producto, Long idActual) {
