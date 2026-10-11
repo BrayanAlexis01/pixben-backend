@@ -2,7 +2,7 @@ name: Staging API smoke test (isolated H2 + Mongo)
 
 on:
   push:
-    branches: ["fix/performance-concurrency-20261010"]
+    branches: ["fix/performance-concurrency-20261010", "fix/catalog-cache-render-starter-20261011"]
     paths:
       - ".github/workflows/staging-smoke.yml"
       - "src/main/**"
