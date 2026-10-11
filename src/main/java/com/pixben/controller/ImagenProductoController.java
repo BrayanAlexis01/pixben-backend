@@ -69,7 +69,7 @@ public class ImagenProductoController {
             value = "/{productoId}",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
-    @CacheEvict(value = {"galerias", "productos"}, allEntries = true)
+    @CacheEvict(value = {"galerias", "productos", "catalogoPaginas"}, allEntries = true)
     public ImagenProducto subirGaleria(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long productoId,
@@ -125,7 +125,7 @@ public class ImagenProductoController {
             value = "/{productoId}/variantes/{claveColor}",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
-    @CacheEvict(value = {"galerias", "productos"}, allEntries = true)
+    @CacheEvict(value = {"galerias", "productos", "catalogoPaginas"}, allEntries = true)
     public ImagenProducto subirGaleriaVariante(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long productoId,
@@ -190,7 +190,7 @@ public class ImagenProductoController {
     }
 
     @DeleteMapping("/{productoId}/variantes/{claveColor}")
-    @CacheEvict(value = {"galerias", "productos"}, allEntries = true)
+    @CacheEvict(value = {"galerias", "productos", "catalogoPaginas"}, allEntries = true)
     public ImagenProducto eliminarGaleriaVariante(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long productoId,

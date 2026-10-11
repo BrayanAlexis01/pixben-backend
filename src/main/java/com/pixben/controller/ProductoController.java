@@ -72,6 +72,7 @@ public class ProductoController {
      * Catálogo paginado en base de datos. El endpoint /productos antiguo permanece
      * disponible para clientes existentes y herramientas administrativas.
      */
+    @Cacheable(value = "catalogoPaginas", sync = true)
     @GetMapping("/pagina")
     public Page<Producto> listarPagina(
             @RequestParam(defaultValue = "0") int pagina,
@@ -167,7 +168,7 @@ public class ProductoController {
     }
 
     @PostMapping
-    @CacheEvict(value = "productos", allEntries = true)
+    @CacheEvict(value = {"productos", "catalogoPaginas"}, allEntries = true)
     public Producto guardarProducto(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @RequestBody Producto producto) {
@@ -196,7 +197,7 @@ public class ProductoController {
     }
 
     @PutMapping("/{id}")
-    @CacheEvict(value = "productos", allEntries = true)
+    @CacheEvict(value = {"productos", "catalogoPaginas"}, allEntries = true)
     public Producto actualizarProducto(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long id,
@@ -222,7 +223,7 @@ public class ProductoController {
     }
 
     @DeleteMapping("/{id}")
-    @CacheEvict(value = "productos", allEntries = true)
+    @CacheEvict(value = {"productos", "catalogoPaginas"}, allEntries = true)
     @Transactional
     public void eliminarProducto(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
@@ -238,7 +239,7 @@ public class ProductoController {
     }
 
     @PostMapping("/eliminar-lote")
-    @CacheEvict(value = "productos", allEntries = true)
+    @CacheEvict(value = {"productos", "catalogoPaginas"}, allEntries = true)
     @Transactional
     public Map<String, Object> eliminarProductosLote(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
@@ -422,7 +423,7 @@ public class ProductoController {
     }
 
     @PostMapping("/{id}/imagen")
-    @CacheEvict(value = "productos", allEntries = true)
+    @CacheEvict(value = {"productos", "catalogoPaginas"}, allEntries = true)
     public Producto subirImagen(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable Long id,

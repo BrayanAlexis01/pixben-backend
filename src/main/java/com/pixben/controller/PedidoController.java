@@ -166,7 +166,7 @@ public class PedidoController {
 
     @PatchMapping("/{id}/estado")
     @Transactional
-    @CacheEvict(value = "productos", allEntries = true)
+    @CacheEvict(value = {"productos", "catalogoPaginas"}, allEntries = true)
     public Pedido cambiarEstado(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable String id,
@@ -189,7 +189,7 @@ public class PedidoController {
 
     @PatchMapping("/{id}/gestion")
     @Transactional
-    @CacheEvict(value = "productos", allEntries = true)
+    @CacheEvict(value = {"productos", "catalogoPaginas"}, allEntries = true)
     public Pedido gestionar(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable String id,
@@ -231,7 +231,7 @@ public class PedidoController {
 
     @DeleteMapping("/{id}")
     @Transactional
-    @CacheEvict(value = "productos", allEntries = true)
+    @CacheEvict(value = {"productos", "catalogoPaginas"}, allEntries = true)
     public void eliminar(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable String id) {
