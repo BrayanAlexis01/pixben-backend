@@ -13,6 +13,9 @@ import com.pixben.repository.PedidoRepository;
 import com.pixben.repository.ProductoRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import com.pixben.service.AutenticacionService;
 import com.pixben.service.WebPushService;
 import java.security.SecureRandom;
@@ -140,6 +143,18 @@ public class PedidoController {
         return repository.findByUsuarioId(usuario.getId()).stream()
                 .sorted(Comparator.comparing(Pedido::getFecha, Comparator.nullsLast(String::compareTo)).reversed())
                 .toList();
+    }
+
+    @GetMapping("/admin/pagina")
+    public Page<Pedido> listarPaginaAdmin(
+            @RequestHeader(AutenticacionService.HEADER_SESION) String token,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int limite) {
+        autenticacionService.requerirAdmin(token);
+        return repository.findAll(PageRequest.of(
+                Math.max(0, pagina),
+                Math.max(1, Math.min(50, limite)),
+                Sort.by(Sort.Direction.DESC, "id")));
     }
 
     @GetMapping("/admin/todos")
