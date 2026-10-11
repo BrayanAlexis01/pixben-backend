@@ -28,6 +28,15 @@ public class CarritoController {
     private final CarritoRepository repository;
     private final ProductoRepository productoRepository;
     private final AutenticacionService autenticacionService;
+    private static final Object[] BLOQUEOS_CARRITO = new Object[256];
+
+    static {
+        for (int i = 0; i < BLOQUEOS_CARRITO.length; i++) BLOQUEOS_CARRITO[i] = new Object();
+    }
+
+    private Object bloqueoCarrito(Long usuarioId) {
+        return BLOQUEOS_CARRITO[Math.floorMod(usuarioId.hashCode(), BLOQUEOS_CARRITO.length)];
+    }
 
     public CarritoController(
             CarritoRepository repository,
@@ -43,6 +52,13 @@ public class CarritoController {
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @RequestBody Carrito carrito) {
         Usuario usuario = autenticacionService.requerirUsuario(token);
+        synchronized (bloqueoCarrito(usuario.getId())) {
+            return agregarSerializado(usuario, carrito);
+        }
+    }
+
+    /** Evita carreras entre peticiones de carrito de un mismo usuario en esta instancia. */
+    private Carrito agregarSerializado(Usuario usuario, Carrito carrito) {
         if (carrito.getProductoId() == null && !Boolean.TRUE.equals(carrito.getPersonalizado())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El producto es obligatorio");
         }
@@ -89,8 +105,10 @@ public class CarritoController {
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable String id) {
         Usuario usuario = autenticacionService.requerirUsuario(token);
-        Carrito item = obtenerPropio(id, usuario.getId());
-        repository.delete(item);
+        synchronized (bloqueoCarrito(usuario.getId())) {
+            Carrito item = obtenerPropio(id, usuario.getId());
+            repository.delete(item);
+        }
     }
 
     @PutMapping("/{id}/{cantidad}")
@@ -99,6 +117,12 @@ public class CarritoController {
             @PathVariable String id,
             @PathVariable Integer cantidad) {
         Usuario usuario = autenticacionService.requerirUsuario(token);
+        synchronized (bloqueoCarrito(usuario.getId())) {
+            return actualizarCantidadSerializada(usuario, id, cantidad);
+        }
+    }
+
+    private Carrito actualizarCantidadSerializada(Usuario usuario, String id, Integer cantidad) {
         Carrito carrito = obtenerPropio(id, usuario.getId());
         int nuevaCantidad = normalizarCantidad(cantidad);
         if (!Boolean.TRUE.equals(carrito.getPersonalizado()) && carrito.getProductoId() != null) {
@@ -113,7 +137,9 @@ public class CarritoController {
     public void vaciarMio(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token) {
         Usuario usuario = autenticacionService.requerirUsuario(token);
-        repository.deleteByUsuarioId(usuario.getId());
+        synchronized (bloqueoCarrito(usuario.getId())) {
+            repository.deleteByUsuarioId(usuario.getId());
+        }
     }
 
     private Carrito obtenerPropio(String id, Long usuarioId) {
