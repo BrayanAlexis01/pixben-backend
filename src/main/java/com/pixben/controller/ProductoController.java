@@ -100,12 +100,12 @@ public class ProductoController {
         Specification<Producto> filtros = (root, query, cb) -> {
             List<Predicate> condiciones = new ArrayList<>();
             if (!busquedaFinal.isBlank()) {
-                String patron = "%" + busquedaFinal.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+                String patron = "%" + busquedaFinal + "%";
                 condiciones.add(cb.or(
-                        cb.like(cb.lower(root.get("nombre")), patron, '\\'),
-                        cb.like(cb.lower(root.get("categoria")), patron, '\\'),
-                        cb.like(cb.lower(root.get("descripcion")), patron, '\\'),
-                        cb.like(cb.lower(root.get("sku")), patron, '\\')));
+                        cb.like(cb.lower(root.get("nombre")), patron),
+                        cb.like(cb.lower(root.get("categoria")), patron),
+                        cb.like(cb.lower(root.get("descripcion")), patron),
+                        cb.like(cb.lower(root.get("sku")), patron)));
             }
             if (!categoriaFinal.isBlank() && !"todos".equals(categoriaFinal))
                 condiciones.add(cb.equal(cb.lower(root.get("categoria")), categoriaFinal));
