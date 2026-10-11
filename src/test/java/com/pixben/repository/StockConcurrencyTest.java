@@ -69,6 +69,7 @@ class StockConcurrencyTest {
         } finally {
             inicio.countDown();
             executor.shutdownNow();
+            transacciones.executeWithoutResult(estado -> productos.deleteById(id));
         }
     }
 }
