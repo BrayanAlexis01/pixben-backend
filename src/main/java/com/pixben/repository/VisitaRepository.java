@@ -8,6 +8,7 @@ import java.util.Optional;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface VisitaRepository extends MongoRepository<Visita, String> {
+    long countByDia(LocalDate dia);
     Optional<Visita> findFirstByHashVisitanteAndRutaAndDia(String hashVisitante, String ruta, LocalDate dia);
     List<Visita> findTop50ByAutenticadaTrueOrderByFechaDesc();
     void deleteByFechaBefore(LocalDateTime limite);

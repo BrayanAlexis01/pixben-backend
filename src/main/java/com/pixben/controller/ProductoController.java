@@ -18,6 +18,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.Comparator;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -59,6 +66,104 @@ public class ProductoController {
     @Cacheable(value = "productos", key = "'todos'")
     public List<Producto> listarProductos() {
         return productoRepository.findAll();
+    }
+
+    /**
+     * Catálogo paginado en base de datos. El endpoint /productos antiguo permanece
+     * disponible para clientes existentes y herramientas administrativas.
+     */
+    @GetMapping("/pagina")
+    public Page<Producto> listarPagina(
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "16") int limite,
+            @RequestParam(defaultValue = "") String buscar,
+            @RequestParam(defaultValue = "") String categoria,
+            @RequestParam(defaultValue = "") String colores,
+            @RequestParam(defaultValue = "") String tallas,
+            @RequestParam(defaultValue = "0") BigDecimal precioMin,
+            @RequestParam(required = false) BigDecimal precioMax,
+            @RequestParam(defaultValue = "false") boolean soloStock,
+            @RequestParam(defaultValue = "popular") String orden) {
+        int paginaSegura = Math.max(0, pagina);
+        int limiteSeguro = Math.max(1, Math.min(48, limite));
+        String busqueda = buscar.trim().toLowerCase(Locale.ROOT);
+        if (busqueda.length() > 100) busqueda = busqueda.substring(0, 100);
+        final String busquedaFinal = busqueda;
+        final String categoriaFinal = categoria.trim().toLowerCase(Locale.ROOT);
+        final List<String> coloresFinal = Arrays.stream(colores.split(","))
+                .map(v -> v.trim().toLowerCase(Locale.ROOT)).filter(v -> !v.isBlank()).limit(12).toList();
+        final List<String> tallasFinal = Arrays.stream(tallas.split(","))
+                .map(v -> v.trim().toUpperCase(Locale.ROOT)).filter(v -> v.matches("XS|S|M|L|XL|XXL")).distinct().toList();
+        final BigDecimal min = precioMin == null || precioMin.signum() < 0 ? BigDecimal.ZERO : precioMin;
+        final BigDecimal max = precioMax;
+
+        Specification<Producto> filtros = (root, query, cb) -> {
+            List<Predicate> condiciones = new ArrayList<>();
+            if (!busquedaFinal.isBlank()) {
+                String patron = "%" + busquedaFinal + "%";
+                condiciones.add(cb.or(
+                        cb.like(cb.lower(root.get("nombre")), patron),
+                        cb.like(cb.lower(root.get("categoria")), patron),
+                        cb.like(cb.lower(root.get("descripcion")), patron),
+                        cb.like(cb.lower(root.get("sku")), patron)));
+            }
+            if (!categoriaFinal.isBlank() && !"todos".equals(categoriaFinal))
+                condiciones.add(cb.equal(cb.lower(root.get("categoria")), categoriaFinal));
+            condiciones.add(cb.greaterThanOrEqualTo(root.get("precio"), min));
+            if (max != null) condiciones.add(cb.lessThanOrEqualTo(root.get("precio"), max));
+            if (soloStock) condiciones.add(cb.greaterThan(root.get("stock"), 0));
+            if (!coloresFinal.isEmpty()) {
+                var joinColores = root.join("colores", JoinType.LEFT);
+                List<Predicate> opciones = new ArrayList<>();
+                for (String color : coloresFinal) {
+                    String patron = "%" + color + "%";
+                    opciones.add(cb.like(cb.lower(joinColores.get("nombre")), patron));
+                    opciones.add(cb.like(cb.lower(root.get("nombre")), patron));
+                    opciones.add(cb.like(cb.lower(root.get("descripcion")), patron));
+                }
+                condiciones.add(cb.or(opciones.toArray(Predicate[]::new)));
+                query.distinct(true);
+            }
+            if (!tallasFinal.isEmpty()) {
+                var normalizadas = cb.concat(cb.concat(",", cb.upper(root.get("tallasDisponibles"))), ",");
+                condiciones.add(cb.or(
+                        cb.isNull(root.get("tallasDisponibles")),
+                        cb.equal(root.get("tallasDisponibles"), ""),
+                        cb.or(tallasFinal.stream()
+                                .map(t -> cb.like(normalizadas, "%," + t + ",%"))
+                                .toArray(Predicate[]::new))));
+            }
+            return cb.and(condiciones.toArray(Predicate[]::new));
+        };
+        Sort sort = switch (orden) {
+            case "precio-asc" -> Sort.by(Sort.Order.asc("precio"), Sort.Order.desc("id"));
+            case "precio-desc" -> Sort.by(Sort.Order.desc("precio"), Sort.Order.desc("id"));
+            case "nombre" -> Sort.by(Sort.Order.asc("nombre"), Sort.Order.desc("id"));
+            default -> Sort.by(Sort.Order.desc("destacado"), Sort.Order.desc("id"));
+        };
+        return productoRepository.findAll(filtros, PageRequest.of(paginaSegura, limiteSeguro, sort));
+    }
+
+    @GetMapping("/filtros")
+    @Cacheable(value = "productos", key = "'filtros'")
+    public Map<String, Object> datosFiltros() {
+        BigDecimal max = productoRepository.precioMaximo();
+        return Map.of(
+                "categorias", productoRepository.listarCategorias(),
+                "precioMaximo", max == null ? BigDecimal.ZERO : max);
+    }
+
+    @GetMapping("/destacados")
+    @Cacheable(value = "productos", key = "'destacados'")
+    public List<Producto> listarDestacados() {
+        return productoRepository.findByDestacadoTrueOrderByIdDesc(PageRequest.of(0, 12));
+    }
+
+    @GetMapping("/por-ids")
+    public List<Producto> listarPorIds(@RequestParam List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        if (ids.size() > 50) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Demasiados IDs");
+        return productoRepository.findAllById(ids);
     }
 
     @PostMapping

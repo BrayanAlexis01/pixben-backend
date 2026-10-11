@@ -11,6 +11,11 @@ import com.pixben.mongo.PedidoPersonalizado;
 import com.pixben.repository.PedidoPersonalizadoRepository;
 import com.pixben.repository.PedidoRepository;
 import com.pixben.repository.ProductoRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import com.pixben.service.AutenticacionService;
 import com.pixben.service.WebPushService;
 import java.security.SecureRandom;
@@ -140,6 +145,18 @@ public class PedidoController {
                 .toList();
     }
 
+    @GetMapping("/admin/pagina")
+    public Page<Pedido> listarPaginaAdmin(
+            @RequestHeader(AutenticacionService.HEADER_SESION) String token,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int limite) {
+        autenticacionService.requerirAdmin(token);
+        return repository.findAll(PageRequest.of(
+                Math.max(0, pagina),
+                Math.max(1, Math.min(50, limite)),
+                Sort.by(Sort.Direction.DESC, "id")));
+    }
+
     @GetMapping("/admin/todos")
     public List<Pedido> listarTodos(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token) {
@@ -148,6 +165,8 @@ public class PedidoController {
     }
 
     @PatchMapping("/{id}/estado")
+    @Transactional
+    @CacheEvict(value = "productos", allEntries = true)
     public Pedido cambiarEstado(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable String id,
@@ -169,6 +188,8 @@ public class PedidoController {
     }
 
     @PatchMapping("/{id}/gestion")
+    @Transactional
+    @CacheEvict(value = "productos", allEntries = true)
     public Pedido gestionar(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable String id,
@@ -209,6 +230,8 @@ public class PedidoController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
+    @CacheEvict(value = "productos", allEntries = true)
     public void eliminar(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token,
             @PathVariable String id) {
@@ -408,7 +431,7 @@ public class PedidoController {
         for (PedidoItem item : pedido.getItems()) {
             if (item == null || Boolean.TRUE.equals(item.getPersonalizado()) || item.getProductoId() == null) continue;
             Producto producto = modificados.computeIfAbsent(item.getProductoId(), id ->
-                    productoRepository.findById(id)
+                    productoRepository.findByIdForUpdate(id)
                             .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
                                     "El producto " + valor(item.getNombre(), "seleccionado") + " ya no existe")));
             int cantidad = normalizarCantidad(item.getCantidad());
@@ -446,7 +469,7 @@ public class PedidoController {
         for (PedidoItem item : pedido.getItems()) {
             if (item == null || Boolean.TRUE.equals(item.getPersonalizado()) || item.getProductoId() == null) continue;
             Producto producto = modificados.computeIfAbsent(item.getProductoId(),
-                    id -> productoRepository.findById(id).orElse(null));
+                    id -> productoRepository.findByIdForUpdate(id).orElse(null));
             if (producto == null) continue;
             int cantidad = Math.max(1, Math.min(20, item.getCantidad() == null ? 1 : item.getCantidad()));
             String color = valor(item.getColor(), "SIN_COLOR");
