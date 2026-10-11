@@ -13,6 +13,10 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.bson.Document;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.query.Criteria;
 import java.util.stream.Collectors;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,11 +33,13 @@ public class VisitaController {
 
     private final VisitaRepository repository;
     private final AutenticacionService autenticacionService;
+    private final MongoTemplate mongoTemplate;
     private volatile LocalDate ultimaLimpieza;
 
-    public VisitaController(VisitaRepository repository, AutenticacionService autenticacionService) {
+    public VisitaController(VisitaRepository repository, AutenticacionService autenticacionService, MongoTemplate mongoTemplate) {
         this.repository = repository;
         this.autenticacionService = autenticacionService;
+        this.mongoTemplate = mongoTemplate;
     }
 
     @PostMapping
@@ -68,15 +74,18 @@ public class VisitaController {
     public Map<String, Object> resumen(
             @RequestHeader(AutenticacionService.HEADER_SESION) String token) {
         autenticacionService.requerirAdmin(token);
-        List<Visita> visitas = repository.findAll();
         LocalDate hoy = LocalDate.now();
-        long visitasHoy = visitas.stream().filter(v -> hoy.equals(v.getDia())).count();
-        long anonimos = visitas.stream().filter(v -> !v.isAutenticada()).map(Visita::getHashVisitante).distinct().count();
-        long autenticados = visitas.stream().filter(Visita::isAutenticada).map(Visita::getUsuarioId).filter(x -> x != null).distinct().count();
-
-        Map<String, Long> porDia = visitas.stream()
-                .filter(v -> v.getDia() != null && !v.getDia().isBefore(hoy.minusDays(6)))
-                .collect(Collectors.groupingBy(v -> v.getDia().toString(), LinkedHashMap::new, Collectors.counting()));
+        long vistasTotales = repository.count();
+        long visitasHoy = repository.countByDia(hoy);
+        long anonimos = contarDistintos("hashVisitante", Criteria.where("autenticada").is(false));
+        long autenticados = contarDistintos("usuarioId",
+                new Criteria().andOperator(Criteria.where("autenticada").is(true),
+                        Criteria.where("usuarioId").ne(null)));
+        Map<String, Long> porDia = new LinkedHashMap<>();
+        for (int i = 6; i >= 0; i--) {
+            LocalDate dia = hoy.minusDays(i);
+            porDia.put(dia.toString(), repository.countByDia(dia));
+        }
 
         List<Map<String, Object>> recientes = repository.findTop50ByAutenticadaTrueOrderByFechaDesc().stream()
                 .limit(12)
@@ -89,7 +98,7 @@ public class VisitaController {
                 }).toList();
 
         return Map.of(
-                "vistasTotales", visitas.size(),
+                "vistasTotales", vistasTotales,
                 "vistasHoy", visitasHoy,
                 "visitantesAnonimos", anonimos,
                 "usuariosAutenticados", autenticados,
@@ -97,6 +106,16 @@ public class VisitaController {
                 "recientesAutenticadas", recientes,
                 "privacidad", "No se almacena dirección IP ni identidad de visitantes anónimos"
         );
+    }
+
+    private long contarDistintos(String campo, Criteria filtro) {
+        var aggregation = Aggregation.newAggregation(
+                Aggregation.match(filtro),
+                Aggregation.group(campo),
+                Aggregation.count().as("total"));
+        Document resultado = mongoTemplate.aggregate(aggregation, Visita.class, Document.class)
+                .getUniqueMappedResult();
+        return resultado == null ? 0 : ((Number) resultado.get("total")).longValue();
     }
 
     @DeleteMapping("/admin/todas")
