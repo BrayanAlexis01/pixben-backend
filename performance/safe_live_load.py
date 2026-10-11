@@ -64,9 +64,10 @@ async def main():
     async with aiohttp.ClientSession(timeout=TIMEOUT, connector=connector,
                                      headers={"User-Agent": "PixBenBoundedPerformanceProbe/1.0"}) as session:
         async with session.get(urljoin(BASE, "api/health")) as r:
-            print("Health warmup HTTP", r.status, flush=True)
-            if r.status >= 400:
-                raise SystemExit("Backend is not healthy before the load test")
+            health = await r.json()
+            print("Health warmup HTTP", r.status, "version", health.get("version"), flush=True)
+            if r.status >= 400 or health.get("version") != "pixben-backend-2026-10-11-cache":
+                raise SystemExit("The latest cache-enabled PixBen backend is not deployed")
         results = []
         for users in STAGES:
             print(f"START STAGE: {users} virtual users", flush=True)
