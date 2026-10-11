@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class HealthController {
 
-    private static final String VERSION = "pixben-backend-2026-09-11";
+    private static final String VERSION = "pixben-backend-2026-10-11-cache";
 
     @GetMapping({"/healthz", "/api/health"})
     public ResponseEntity<Map<String, Object>> health() {

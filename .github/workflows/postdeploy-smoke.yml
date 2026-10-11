@@ -24,7 +24,7 @@ jobs:
           from urllib.error import HTTPError, URLError
           BASE = "https://pixben-backend.onrender.com"
           paths = {
-              "/api/health": lambda d: d.get("status") == "UP",
+              "/api/health": lambda d: d.get("status") == "UP" and d.get("version") == "pixben-backend-2026-10-11-cache",
               "/productos/pagina?pagina=0&limite=16": lambda d: "content" in d and "totalElements" in d,
               "/productos/filtros": lambda d: "categorias" in d and "precioMaximo" in d,
               "/productos/destacados": lambda d: isinstance(d, list)
