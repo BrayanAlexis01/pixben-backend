@@ -14,7 +14,7 @@ STAGES = [int(v) for v in os.getenv("STAGES", "100,300,500").split(",") if v]
 SECONDS = max(10, int(os.getenv("STAGE_SECONDS", "20")))
 THINK_SECONDS = 10.0
 TIMEOUT = aiohttp.ClientTimeout(total=15)
-PATHS = ("/productos", "/productos", "/productos", "/productos", "/api/health")
+PATHS = ("/productos/pagina?pagina=0&limite=16", "/productos/pagina?pagina=0&limite=16", "/productos/pagina?pagina=0&limite=16", "/productos/destacados", "/api/health")
 
 def percentile(values, frac):
     values = sorted(values)
@@ -59,7 +59,7 @@ async def run_stage(session, users):
     }
 
 async def main():
-    print("Testing read-only GET /productos and GET /api/health on", BASE, flush=True)
+    print("Testing read-only optimized catalog and health endpoints on", BASE, flush=True)
     connector = aiohttp.TCPConnector(limit=180, limit_per_host=180)
     async with aiohttp.ClientSession(timeout=TIMEOUT, connector=connector,
                                      headers={"User-Agent": "PixBenBoundedPerformanceProbe/1.0"}) as session:
