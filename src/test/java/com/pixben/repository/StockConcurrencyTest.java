@@ -62,8 +62,10 @@ class StockConcurrencyTest {
                 if (Boolean.TRUE.equals(futuro.get(15, TimeUnit.SECONDS))) confirmadas++;
             }
             assertEquals(1, confirmadas, "Solo una compra debe descontar la ultima unidad");
-            assertEquals(0, transacciones.execute(estado ->
-                productos.findById(id).orElseThrow().getStock()));
+            Integer stockFinal = transacciones.execute(estado ->
+                productos.findById(id).orElseThrow().getStock());
+            assertNotNull(stockFinal);
+            assertEquals(0, stockFinal.intValue());
         } finally {
             inicio.countDown();
             executor.shutdownNow();
