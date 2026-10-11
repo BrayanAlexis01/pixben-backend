@@ -1,0 +1,46 @@
+name: PixBen post-deployment backend smoke
+
+on:
+  push:
+    branches: ["master"]
+    paths:
+      - ".github/workflows/postdeploy-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Wait for Render deployment and verify new API
+        run: |
+          python3 - <<'PY'
+          import json, time, urllib.request
+          from urllib.error import HTTPError, URLError
+          BASE = "https://pixben-backend.onrender.com"
+          paths = {
+              "/api/health": lambda d: d.get("status") == "UP",
+              "/productos/pagina?pagina=0&limite=16": lambda d: "content" in d and "totalElements" in d,
+              "/productos/filtros": lambda d: "categorias" in d and "precioMaximo" in d,
+              "/productos/destacados": lambda d: isinstance(d, list)
+          }
+          for i in range(36):
+              try:
+                  for path, check in paths.items():
+                      request=urllib.request.Request(BASE+path,headers={"User-Agent":"PixBenPostDeployCheck/1.0"})
+                      with urllib.request.urlopen(request,timeout=20) as response:
+                          data=json.load(response)
+                          if response.status != 200 or not check(data):
+                              raise RuntimeError(f"Unexpected response from {path}")
+                          print(f"PASS {path} HTTP 200",flush=True)
+                  print("POST_DEPLOY_API_OK",flush=True)
+                  break
+              except Exception as exc:
+                  print(f"Waiting for deployed backend (attempt {i+1}/36): {str(exc)[:180]}",flush=True)
+                  time.sleep(10)
+          else:
+              raise SystemExit("Deployed backend did not expose all required endpoints")
+          PY
