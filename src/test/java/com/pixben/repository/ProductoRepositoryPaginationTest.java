@@ -1,6 +1,9 @@
 package com.pixben.repository;
 
 import com.pixben.model.Producto;
+import com.pixben.controller.ProductoController;
+import com.pixben.model.VarianteColor;
+import java.util.List;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +35,33 @@ class ProductoRepositoryPaginationTest {
         assertTrue(repository.listarCategorias().contains("Polos"));
         assertEquals(0, new BigDecimal("40").compareTo(repository.precioMaximo()));
         assertEquals(1, repository.findByDestacadoTrueOrderByIdDesc(PageRequest.of(0, 12)).size());
+    }
+
+    @Test
+    void endpointPaginaAplicaFiltrosRealesYSigueRespetandoColores() {
+        Producto uno = new Producto();
+        uno.setNombre("Polo Negro");
+        uno.setCategoria("Polos");
+        uno.setDescripcion("Polo de prueba");
+        uno.setPrecio(new BigDecimal("39.00"));
+        uno.setStock(2);
+        uno.setTallasDisponibles("S,M,L");
+        VarianteColor negro = new VarianteColor();
+        negro.setNombre("Negro");
+        negro.setCodigoHex("#000000");
+        negro.setStock(2);
+        uno.setColores(List.of(negro));
+        repository.saveAndFlush(uno);
+        ProductoController controlador = new ProductoController(repository, null, null, null);
+
+        var resultado = controlador.listarPagina(0, 16, "Polo", "Polos", "Negro",
+                "M", BigDecimal.ZERO, new BigDecimal("40"), true, "popular");
+        assertEquals(1, resultado.getTotalElements());
+        assertEquals("Polo Negro", resultado.getContent().get(0).getNombre());
+
+        var vacio = controlador.listarPagina(0, 16, "Polo", "Polos", "Azul",
+                "M", BigDecimal.ZERO, new BigDecimal("40"), true, "popular");
+        assertEquals(0, vacio.getTotalElements());
     }
 
     private void crear(String nombre, String categoria, String precio, boolean destacado) {
