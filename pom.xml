@@ -46,7 +46,7 @@
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.4.1</version>
+            <version>5.5.1</version>
         </dependency>
         <!-- APF3: logging SLF4J con implementación Logback (incluida por starter-web) -->
 

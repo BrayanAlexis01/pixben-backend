@@ -1,0 +1,28 @@
+name: APF3 Java tests and build
+on:
+  push:
+    branches:
+      - feature/apf3-arquitectura-pruebas-librerias-20261021
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Test APF3 core without external databases
+        run: mvn -B -Dtest=CatalogoExportacionServiceTest,CatalogoReporteControllerTest,CarritoControllerVariantTest,TokenSecurityTest,RateLimitFilterTest test
+      - name: Package all modules
+        run: mvn -B -DskipTests package
