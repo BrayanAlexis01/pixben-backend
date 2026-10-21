@@ -30,6 +30,26 @@
         <java.version>21</java.version>
     </properties>
     <dependencies>
+        <!-- APF3: utilidades de cadenas y objetos -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.21.0</version>
+        </dependency>
+        <!-- APF3: colecciones inmutables -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>33.5.0-jre</version>
+        </dependency>
+        <!-- APF3: exportación de hojas de cálculo -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.4.1</version>
+        </dependency>
+        <!-- APF3: logging SLF4J con implementación Logback (incluida por starter-web) -->
+
 
         <!-- Spring Web -->
         <dependency>
