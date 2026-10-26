@@ -1,0 +1,45 @@
+name: APF3 Javadoc HTML - evidencia descargable
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/apf3-javadoc.yml"
+      - "src/main/java/**"
+      - "pom.xml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  javadoc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Generate real Java API documentation
+        run: >
+          mvn -B
+          -DskipTests
+          -Ddoclint=none
+          -Dmaven.javadoc.failOnWarnings=false
+          org.apache.maven.plugins:maven-javadoc-plugin:3.11.3:javadoc
+      - name: Confirm HTML documentation was generated
+        run: |
+          test -s target/site/apidocs/index.html
+          test -s target/site/apidocs/com/pixben/service/CatalogoExportacionService.html
+          test -s target/site/apidocs/com/pixben/controller/CatalogoReporteController.html
+          echo "JAVADOC_HTML_OK: clases y métodos publicados en target/site/apidocs"
+      - name: Upload browsable HTML documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixBen-APF3-Javadoc-HTML
+          path: target/site/apidocs/
+          retention-days: 90
+          if-no-files-found: error
