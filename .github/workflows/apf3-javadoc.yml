@@ -32,14 +32,19 @@ jobs:
           org.apache.maven.plugins:maven-javadoc-plugin:3.11.3:javadoc
       - name: Confirm HTML documentation was generated
         run: |
-          test -s target/site/apidocs/index.html
-          test -s target/site/apidocs/com/pixben/service/CatalogoExportacionService.html
-          test -s target/site/apidocs/com/pixben/controller/CatalogoReporteController.html
-          echo "JAVADOC_HTML_OK: clases y métodos publicados en target/site/apidocs"
+          find target -type f -name index.html | head -20
+          index=$(find target -type f -path '*/apidocs/index.html' -print -quit)
+          test -n "$index"
+          carpeta="${index%/index.html}"
+          test -s "$carpeta/com/pixben/service/CatalogoExportacionService.html"
+          test -s "$carpeta/com/pixben/controller/CatalogoReporteController.html"
+          mkdir -p javadoc-publicable
+          cp -R "$carpeta"/. javadoc-publicable/
+          echo "JAVADOC_HTML_OK: generado en $carpeta, copiado a javadoc-publicable/"
       - name: Upload browsable HTML documentation
         uses: actions/upload-artifact@v4
         with:
           name: PixBen-APF3-Javadoc-HTML
-          path: target/site/apidocs/
+          path: javadoc-publicable/
           retention-days: 90
           if-no-files-found: error
