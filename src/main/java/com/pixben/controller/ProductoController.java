@@ -46,6 +46,20 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/productos")
 public class ProductoController {
 
+    private static final String CATEGORIA_BOLSOS = "Bolsos de Tocuyo";
+
+    /** Compatibilidad con productos antiguos que quedaron en dos categorías equivalentes. */
+    private static boolean esCategoriaBolsos(String categoria) {
+        if (categoria == null) return false;
+        String valor = categoria.trim();
+        return CATEGORIA_BOLSOS.equalsIgnoreCase(valor)
+                || "Bolsos / Totebags".equalsIgnoreCase(valor);
+    }
+
+    private static String nombreCategoriaPublica(String categoria) {
+        return esCategoriaBolsos(categoria) ? CATEGORIA_BOLSOS : categoria;
+    }
+
     private final ProductoRepository productoRepository;
     private final Cloudinary cloudinary;
     private final ImagenSeguraService imagenSeguraService;
@@ -108,8 +122,13 @@ public class ProductoController {
                         cb.like(cb.lower(root.get("descripcion")), patron),
                         cb.like(cb.lower(root.get("sku")), patron)));
             }
-            if (!categoriaFinal.isBlank() && !"todos".equals(categoriaFinal))
-                condiciones.add(cb.equal(cb.lower(root.get("categoria")), categoriaFinal));
+            if (!categoriaFinal.isBlank() && !"todos".equals(categoriaFinal)) {
+                if (esCategoriaBolsos(categoriaFinal)) {
+                    condiciones.add(cb.lower(root.get("categoria")).in("bolsos de tocuyo", "bolsos / totebags"));
+                } else {
+                    condiciones.add(cb.equal(cb.lower(root.get("categoria")), categoriaFinal));
+                }
+            }
             condiciones.add(cb.greaterThanOrEqualTo(root.get("precio"), min));
             if (max != null) condiciones.add(cb.lessThanOrEqualTo(root.get("precio"), max));
             if (soloStock) condiciones.add(cb.greaterThan(root.get("stock"), 0));
@@ -150,7 +169,10 @@ public class ProductoController {
     public Map<String, Object> datosFiltros() {
         BigDecimal max = productoRepository.precioMaximo();
         return Map.of(
-                "categorias", productoRepository.listarCategorias(),
+                "categorias", productoRepository.listarCategorias().stream()
+                        .map(ProductoController::nombreCategoriaPublica)
+                        .distinct()
+                        .toList(),
                 "precioMaximo", max == null ? BigDecimal.ZERO : max);
     }
 
@@ -298,7 +320,7 @@ public class ProductoController {
         }
         producto.setDescripcion(descripcion);
 
-        String categoria = compactar(producto.getCategoria());
+        String categoria = nombreCategoriaPublica(compactar(producto.getCategoria()));
         if (categoria.isBlank() || categoria.length() > 100) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoría inválida");
         }
