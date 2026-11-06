@@ -64,6 +64,26 @@ class ProductoRepositoryPaginationTest {
         assertEquals(0, vacio.getTotalElements());
     }
 
+    @Test
+    void personalizableSoloSiAdministracionLoHabilita() {
+        Producto habilitado = new Producto();
+        habilitado.setNombre("Polo básico personalizable");
+        habilitado.setPrecio(new BigDecimal("30.00"));
+        habilitado.setPersonalizable(true);
+        repository.saveAndFlush(habilitado);
+
+        Producto deshabilitado = new Producto();
+        deshabilitado.setNombre("Polo para personalizar");
+        deshabilitado.setDescripcion("Se puede personalizar, pero está deshabilitado");
+        deshabilitado.setPrecio(new BigDecimal("45.00"));
+        deshabilitado.setPersonalizable(false);
+        repository.saveAndFlush(deshabilitado);
+
+        List<Producto> disponibles = repository.findByPersonalizableTrueOrderByIdDesc();
+        assertTrue(disponibles.stream().anyMatch(p -> p.getId().equals(habilitado.getId())));
+        assertFalse(disponibles.stream().anyMatch(p -> p.getId().equals(deshabilitado.getId())));
+    }
+
     private void crear(String nombre, String categoria, String precio, boolean destacado) {
         Producto p = new Producto();
         p.setNombre(nombre);
