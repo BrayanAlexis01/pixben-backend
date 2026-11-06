@@ -19,6 +19,14 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void analyticsEndpointIsThrottledButItsPreflightIsAllowed() {
+        MockHttpServletRequest post = new MockHttpServletRequest("POST", "/visitas");
+        MockHttpServletRequest preflight = new MockHttpServletRequest("OPTIONS", "/visitas");
+        org.junit.jupiter.api.Assertions.assertFalse(filter.shouldNotFilter(post));
+        org.junit.jupiter.api.Assertions.assertTrue(filter.shouldNotFilter(preflight));
+    }
+
+    @Test
     void invalidCloudflareHeaderFallsBackToRemoteAddress() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("CF-Connecting-IP", "spoofed-value");

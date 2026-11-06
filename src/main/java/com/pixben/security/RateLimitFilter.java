@@ -80,6 +80,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (path.equals("/usuarios/login")) return new Policy("login", 8, 10 * 60_000L);
         if (path.equals("/usuarios")) return new Policy("registro", 5, 60 * 60_000L);
         if (path.equals("/contactos")) return new Policy("contacto", 8, 60 * 60_000L);
+        // Evita escrituras ilimitadas de visitantes artificiales en MongoDB Atlas Free.
+        if (path.equals("/visitas")) return new Policy("visitas", 45, 60_000L);
         if (path.equals("/pedidos/invitado")) return new Policy("pedido-invitado", 8, 60 * 60_000L);
         if (path.equals("/pedidos/invitado/consultar")) return new Policy("consulta-invitado", 12, 10 * 60_000L);
         if (path.equals("/pedidos")) return new Policy("pedido", 12, 60 * 60_000L);

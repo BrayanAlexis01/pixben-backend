@@ -25,6 +25,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Long>, JpaSp
 
     List<Producto> findByDestacadoTrueOrderByIdDesc(Pageable limite);
 
+    // Filtrado en PostgreSQL: no cargar todo el catálogo para el personalizador.
+    List<Producto> findByPersonalizableTrueOrderByIdDesc();
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Producto p where p.id = :id")
     Optional<Producto> findByIdForUpdate(@Param("id") Long id);

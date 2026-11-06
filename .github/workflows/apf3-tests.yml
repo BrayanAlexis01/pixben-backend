@@ -23,6 +23,6 @@ jobs:
           java-version: '21'
           cache: maven
       - name: Test APF3 core without external databases
-        run: mvn -B -Dtest=CatalogoExportacionServiceTest,CatalogoReporteControllerTest,CarritoControllerVariantTest,TokenSecurityTest,RateLimitFilterTest test
+        run: mvn -B -Dtest=CatalogoExportacionServiceTest,CatalogoReporteControllerTest,CarritoControllerVariantTest,TokenSecurityTest,RateLimitFilterTest,ProductoRepositoryPaginationTest test
       - name: Package all modules
         run: mvn -B -DskipTests package

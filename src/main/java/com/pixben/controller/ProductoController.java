@@ -203,9 +203,7 @@ public class ProductoController {
     @GetMapping("/personalizables")
     @Cacheable(value = "productos", key = "'personalizables'")
     public List<Producto> listarPersonalizables() {
-        return productoRepository.findAll().stream()
-                .filter(this::esPersonalizable)
-                .toList();
+        return productoRepository.findByPersonalizableTrueOrderByIdDesc();
     }
 
     @GetMapping("/{id}")
@@ -357,14 +355,6 @@ public class ProductoController {
 
     private String compactar(String valor) {
         return valor == null ? "" : valor.trim().replaceAll("\\s+", " ");
-    }
-
-    private boolean esPersonalizable(Producto producto) {
-        if (Boolean.TRUE.equals(producto.getPersonalizable())) return true;
-        String texto = ((producto.getNombre() == null ? "" : producto.getNombre()) + " "
-                + (producto.getDescripcion() == null ? "" : producto.getDescripcion()))
-                .toLowerCase(Locale.ROOT);
-        return texto.contains("personalizable") || texto.contains("para personalizar");
     }
 
     private boolean usaTallas(Producto producto) {
