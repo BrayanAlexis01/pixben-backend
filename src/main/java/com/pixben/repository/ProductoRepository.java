@@ -20,6 +20,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Long>, JpaSp
     @Query("select distinct p.categoria from Producto p where p.categoria is not null order by p.categoria")
     List<String> listarCategorias();
 
+    @Query("select p.id from Producto p order by p.id")
+    List<Long> listarIdsParaSitemap();
+
     @Query("select max(p.precio) from Producto p")
     BigDecimal precioMaximo();
 
